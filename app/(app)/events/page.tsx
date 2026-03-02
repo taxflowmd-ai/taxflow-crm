@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Plus } from 'lucide-react'
+import { Smartphone, Copy, Check } from 'lucide-react'
 
 const TYPE_CFG: Record<string,{label:string,icon:string,cls:string}> = {
   meeting:{label:'Întâlnire',icon:'🤝',cls:'bg-blue-50 text-blue-700'},
@@ -11,6 +12,8 @@ const TYPE_CFG: Record<string,{label:string,icon:string,cls:string}> = {
 }
 const MONTHS = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie']
 const DAYS = ['L','M','M','J','V','S','D']
+const [calUrl, setCalUrl] = useState<string|null>(null)
+const [copied, setCopied] = useState(false)
 
 export default function EventsPage() {
   const [events, setEvents] = useState<any[]>([])
@@ -28,6 +31,22 @@ export default function EventsPage() {
   }
 
   useEffect(()=>{ load() },[])
+
+  async function getCalendarUrl() {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: prof } = await (supabase as any)
+    .from('profiles').select('calendar_token').eq('id', user!.id).single()
+  const url = `${window.location.origin}/api/calendar/feed?uid=${user!.id}&token=${(prof as any).calendar_token}`
+  setCalUrl(url)
+}
+
+  async function copyUrl() {
+  if (!calUrl) return
+  await navigator.clipboard.writeText(calUrl)
+  setCopied(true)
+  setTimeout(() => setCopied(false), 2000)
+}
 
   async function handleAdd(e:React.FormEvent) {
     e.preventDefault()
@@ -61,6 +80,16 @@ export default function EventsPage() {
   const inp=(field:string)=>({value:(form as any)[field],onChange:(e:any)=>setForm(f=>({...f,[field]:e.target.value})),className:'input'})
 
   return (
+<div className="flex items-center gap-2">
+  <button onClick={getCalendarUrl}
+    className="flex items-center gap-1.5 text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
+    <Smartphone size={13} />
+    Sincronizează iOS
+  </button>
+  <button onClick={()=>setShowModal(true)} className="btn-primary">
+    <Plus size={15}/>Eveniment nou
+  </button>
+</div>
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
         <div><h1 className="text-base font-semibold">Evenimente</h1><p className="text-xs text-gray-400">{upcoming.length} viitoare</p></div>
@@ -113,6 +142,46 @@ export default function EventsPage() {
           </div>
         </div>
       </div>
+{calUrl && (
+  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 bg-[#e8f0ee] rounded-xl flex items-center justify-center">
+          <Smartphone size={20} className="text-[#004437]" />
+        </div>
+        <div>
+          <h2 className="font-semibold text-gray-900">Sincronizare Calendar iOS</h2>
+          <p className="text-xs text-gray-500">Abonează-te la calendarul TaxFlow</p>
+        </div>
+      </div>
+
+      <div className="bg-gray-50 rounded-xl p-3 mb-4">
+        <p className="text-xs text-gray-500 break-all font-mono">{calUrl}</p>
+      </div>
+
+      <button onClick={copyUrl}
+        className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm transition-all mb-4 ${copied ? 'bg-green-500 text-white' : 'bg-[#004437] text-white hover:bg-[#005a47]'}`}>
+        {copied ? <><Check size={15}/> Copiat!</> : <><Copy size={15}/> Copiază link-ul</>}
+      </button>
+
+      <div className="border-t border-gray-100 pt-4 space-y-2">
+        <p className="text-xs font-semibold text-gray-700">Cum adaugi în iOS:</p>
+        <ol className="text-xs text-gray-500 space-y-1">
+          <li>1. Copiază link-ul de mai sus</li>
+          <li>2. <strong>Settings</strong> → <strong>Calendar</strong> → <strong>Accounts</strong></li>
+          <li>3. <strong>Add Account</strong> → <strong>Other</strong></li>
+          <li>4. <strong>Add Subscribed Calendar</strong></li>
+          <li>5. Lipește link-ul → <strong>Next</strong> → <strong>Save</strong></li>
+        </ol>
+      </div>
+
+      <button onClick={()=>setCalUrl(null)}
+        className="w-full mt-4 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+        Închide
+      </button>
+    </div>
+  </div>
+)}
       {showModal&&(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
