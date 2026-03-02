@@ -1,45 +1,62 @@
 // app/api/admin/users/[id]/toggle/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-import { createClient as createAdmin } from '@supabase/supabase-js'
+import { NextResponse } from 'next/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
+import { sendAccountDeactivatedEmail, sendAccountReactivatedEmail } from '@/lib/email'
 
-function getSupabase() {
-  const cookieStore = cookies()
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll() }, setAll() {} } }
-  )
-}
-
-const adminClient = () => createAdmin(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-)
-
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
-    const supabase = getSupabase()
+    const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
+
     if (!user) return NextResponse.json({ error: 'Neautorizat' }, { status: 401 })
 
-    const { data: profileData } = await (supabase as any)
-      .from('profiles').select('role').eq('id', user.id).single()
-    if ((profileData as any)?.role !== 'admin') {
+    const { data: adminData } = await supabase
+      .from('profiles')
+      .select('role, is_active')
+      .eq('id', user.id)
+      .single()
+
+    const adminProfile = adminData as { role: string; is_active: boolean } | null
+
+    if (adminProfile?.role !== 'admin' || !adminProfile?.is_active) {
       return NextResponse.json({ error: 'Acces interzis' }, { status: 403 })
     }
 
-    const db = adminClient()
-    const { data: target } = await db.from('profiles').select('is_active').eq('id', params.id).single()
-    if (!target) return NextResponse.json({ error: 'Utilizator negăsit' }, { status: 404 })
+    if (params.id === user.id) {
+      return NextResponse.json({ error: 'Nu poți dezactiva propriul cont' }, { status: 400 })
+    }
 
-    const newActive = !(target as any).is_active
-    await db.from('profiles').update({ is_active: newActive } as any).eq('id', params.id)
+    const adminSupabase = createAdminClient()
 
-    return NextResponse.json({ success: true, is_active: newActive })
+    const { data: targetData, error: profileErr } = await (adminSupabase as any)
+      .from('profiles')
+      .select('full_name, email, is_active')
+      .eq('id', params.id)
+      .single()
+
+    const targetProfile = targetData as { full_name: string; email: string; is_active: boolean } | null
+
+    if (profileErr || !targetProfile) {
+      return NextResponse.json({ error: 'Utilizator negăsit' }, { status: 404 })
+    }
+
+    const newStatus = !targetProfile.is_active
+
+    await (adminSupabase as any)
+      .from('profiles')
+      .update({ is_active: newStatus })
+      .eq('id', params.id)
+
+    if (!newStatus) {
+      await adminSupabase.auth.admin.signOut(params.id)
+      await sendAccountDeactivatedEmail(targetProfile.email, targetProfile.full_name)
+    } else {
+      await sendAccountReactivatedEmail(targetProfile.email, targetProfile.full_name)
+    }
+
+    return NextResponse.json({ success: true, is_active: newStatus })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 })
+    console.error('toggle user error:', err)
+    return NextResponse.json({ error: err.message || 'Eroare server' }, { status: 500 })
   }
 }

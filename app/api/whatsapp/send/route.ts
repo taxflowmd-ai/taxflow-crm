@@ -1,28 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { createClient as createAdmin } from '@supabase/supabase-js'
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
+// app/api/whatsapp/send/route.ts
+// Trimite mesaj din CRM către client
 
-const admin = () => createAdmin(
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { createClient as createAdmin } from '@supabase/supabase-js'
+
+const supabaseAdmin = createAdmin(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { autoRefreshToken: false, persistSession: false } }
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll() },
-          setAll() {},
-        },
-      }
-    )
-
+    // Verifică autentificare
+    const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Neautentificat' }, { status: 401 })
 
@@ -31,18 +22,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Date lipsă' }, { status: 400 })
     }
 
-    const db = admin()
-
-    const { data: conv } = await db
+    // Găsește conversația
+    const { data: conv, error: convErr } = await supabaseAdmin
       .from('whatsapp_conversations')
       .select('wa_phone')
       .eq('id', conversationId)
       .single()
 
-    if (!conv) return NextResponse.json({ error: 'Conversație negăsită' }, { status: 404 })
+    if (convErr || !conv) {
+      return NextResponse.json({ error: 'Conversație negăsită' }, { status: 404 })
+    }
 
     const waPhone = (conv as any).wa_phone
 
+    // Trimite mesajul prin Meta API
     const metaRes = await fetch(
       `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
       {
@@ -62,29 +55,42 @@ export async function POST(req: NextRequest) {
     )
 
     const metaData = await metaRes.json()
+
     if (!metaRes.ok) {
-      return NextResponse.json({ error: metaData.error?.message || 'Eroare Meta API' }, { status: 400 })
+      console.error('Meta API error:', metaData)
+      return NextResponse.json(
+        { error: metaData.error?.message || 'Eroare Meta API' },
+        { status: 400 }
+      )
     }
 
     const waMessageId = metaData.messages?.[0]?.id
 
-    await db.from('whatsapp_messages').insert({
-      conversation_id: conversationId,
-      wa_message_id: waMessageId,
-      direction: 'outbound',
-      message_type: 'text',
-      body: message.trim(),
-      status: 'sent',
-      sent_by: user.id,
-    } as any)
+    // Salvează mesajul în DB
+    await supabaseAdmin
+      .from('whatsapp_messages')
+      .insert({
+        conversation_id: conversationId,
+        wa_message_id: waMessageId,
+        direction: 'outbound',
+        message_type: 'text',
+        body: message.trim(),
+        status: 'sent',
+        sent_by: user.id,
+      } as any)
 
-    await db.from('whatsapp_conversations').update({
-      last_message: message.trim(),
-      last_message_at: new Date().toISOString(),
-    } as any).eq('id', conversationId)
+    // Actualizează conversația
+    await supabaseAdmin
+      .from('whatsapp_conversations')
+      .update({
+        last_message: message.trim(),
+        last_message_at: new Date().toISOString(),
+      } as any)
+      .eq('id', conversationId)
 
     return NextResponse.json({ success: true, messageId: waMessageId })
   } catch (err: any) {
+    console.error('Send error:', err)
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }

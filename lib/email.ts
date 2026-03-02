@@ -3,7 +3,7 @@
 
 import { Resend } from 'resend'
 
-const getResend = () => new Resend(process.env.RESEND_API_KEY || "placeholder")
+const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = process.env.RESEND_FROM_EMAIL || 'noreply@taxflow.md'
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
@@ -22,7 +22,7 @@ export async function sendInvitationEmail({
   const inviteUrl = `${APP_URL}/auth/invite/${token}`
   const roleLabel = role === 'admin' ? 'Administrator' : 'Utilizator'
 
-  const { data, error } = await getResend().emails.send({
+  const { data, error } = await resend.emails.send({
     from: `TaxFlow CRM <${FROM}>`,
     to,
     subject: `${invitedByName} te-a invitat în TaxFlow CRM`,
@@ -106,7 +106,7 @@ export async function sendInvitationEmail({
 
 // ── NOTIFICARE CONT DEZACTIVAT ───────────────────────────────
 export async function sendAccountDeactivatedEmail(to: string, fullName: string) {
-  await getResend().emails.send({
+  await resend.emails.send({
     from: `TaxFlow CRM <${FROM}>`,
     to,
     subject: 'Contul tău TaxFlow CRM a fost dezactivat',
@@ -125,7 +125,7 @@ export async function sendAccountDeactivatedEmail(to: string, fullName: string) 
 // ── NOTIFICARE CONT REACTIVAT ────────────────────────────────
 export async function sendAccountReactivatedEmail(to: string, fullName: string) {
   const loginUrl = `${APP_URL}/auth/login`
-  await getResend().emails.send({
+  await resend.emails.send({
     from: `TaxFlow CRM <${FROM}>`,
     to,
     subject: 'Contul tău TaxFlow CRM a fost reactivat',
