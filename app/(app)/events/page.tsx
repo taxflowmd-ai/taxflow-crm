@@ -19,6 +19,7 @@ export default function EventsPage() {
   const [cal, setCal] = useState({y:new Date().getFullYear(),m:new Date().getMonth()})
   const [form, setForm] = useState({title:'',type:'meeting',lead_id:'',starts_at:'',location:'',note:''})
   const [calUrl, setCalUrl] = useState<string|null>(null)
+  const [webcalUrl, setWebcalUrl] = useState<string|null>(null)
   const [copied, setCopied] = useState(false)
 
   async function load() {
@@ -36,8 +37,11 @@ export default function EventsPage() {
     const { data: { user } } = await supabase.auth.getUser()
     const { data: prof } = await (supabase as any)
       .from('profiles').select('calendar_token').eq('id', user!.id).single()
-    const url = `${window.location.origin}/api/calendar/feed?uid=${user!.id}&token=${(prof as any).calendar_token}`
-    setCalUrl(url)
+    const params = `uid=${user!.id}&token=${(prof as any).calendar_token}`
+    const httpsUrl = `${window.location.origin}/api/calendar/feed?${params}`
+    const wcUrl = `webcal://${window.location.host}/api/calendar/feed?${params}`
+    setCalUrl(httpsUrl)
+    setWebcalUrl(wcUrl)
   }
 
   async function copyUrl() {
@@ -81,7 +85,7 @@ export default function EventsPage() {
         <div className="flex items-center gap-2">
           <button onClick={getCalendarUrl}
             className="flex items-center gap-1.5 text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
-            <Smartphone size={13} />Sincronizează iOS
+            <Smartphone size={13}/>Sincronizează iOS
           </button>
           <button onClick={()=>setShowModal(true)} className="btn-primary"><Plus size={15}/>Eveniment nou</button>
         </div>
@@ -141,31 +145,48 @@ export default function EventsPage() {
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-[#e8f0ee] rounded-xl flex items-center justify-center">
-                <Smartphone size={20} className="text-[#004437]" />
+                <Smartphone size={20} className="text-[#004437]"/>
               </div>
               <div>
                 <h2 className="font-semibold text-gray-900">Sincronizare Calendar iOS</h2>
                 <p className="text-xs text-gray-500">Abonează-te la calendarul TaxFlow</p>
               </div>
             </div>
-            <div className="bg-gray-50 rounded-xl p-3 mb-4">
-              <p className="text-xs text-gray-500 break-all font-mono">{calUrl}</p>
+
+            {/* Buton direct iOS - deschide Calendar app */}
+            <a href={webcalUrl!}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm bg-[#004437] text-white hover:bg-[#005a47] transition-colors mb-3 block text-center">
+              <Smartphone size={15}/> Abonează-te direct în Calendar
+            </a>
+
+            <div className="relative flex items-center gap-2 mb-3">
+              <div className="flex-1 h-px bg-gray-200"/>
+              <span className="text-xs text-gray-400">sau manual</span>
+              <div className="flex-1 h-px bg-gray-200"/>
             </div>
+
+            <div className="bg-gray-50 rounded-xl p-3 mb-3">
+              <p className="text-[10px] text-gray-400 mb-1">Link pentru abonare manuală:</p>
+              <p className="text-xs text-gray-600 break-all font-mono">{calUrl}</p>
+            </div>
+
             <button onClick={copyUrl}
-              className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-medium text-sm transition-all mb-4 ${copied?'bg-green-500 text-white':'bg-[#004437] text-white hover:bg-[#005a47]'}`}>
-              {copied?<><Check size={15}/> Copiat!</>:<><Copy size={15}/> Copiază link-ul</>}
+              className={`w-full flex items-center justify-center gap-2 py-2 rounded-xl font-medium text-sm border transition-all mb-4 ${copied?'border-green-400 text-green-600 bg-green-50':'border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+              {copied?<><Check size={14}/> Copiat!</>:<><Copy size={14}/> Copiază link-ul</>}
             </button>
-            <div className="border-t border-gray-100 pt-4 space-y-2">
-              <p className="text-xs font-semibold text-gray-700">Cum adaugi în iOS:</p>
-              <ol className="text-xs text-gray-500 space-y-1">
-                <li>1. Copiază link-ul de mai sus</li>
-                <li>2. <strong>Settings</strong> → <strong>Calendar</strong> → <strong>Accounts</strong></li>
-                <li>3. <strong>Add Account</strong> → <strong>Other</strong></li>
-                <li>4. <strong>Add Subscribed Calendar</strong></li>
-                <li>5. Lipește link-ul → <strong>Next</strong> → <strong>Save</strong></li>
-              </ol>
+
+            <div className="border-t border-gray-100 pt-4 space-y-1">
+              <p className="text-xs font-semibold text-gray-700 mb-2">Abonare manuală în iOS:</p>
+              <p className="text-xs text-gray-500">1. Copiază link-ul de mai sus</p>
+              <p className="text-xs text-gray-500">2. <strong>Settings</strong> → <strong>Calendar</strong> → <strong>Accounts</strong></p>
+              <p className="text-xs text-gray-500">3. <strong>Add Account</strong> → <strong>Other</strong></p>
+              <p className="text-xs text-gray-500">4. <strong>Add Subscribed Calendar</strong> → lipește link-ul</p>
             </div>
-            <button onClick={()=>setCalUrl(null)} className="w-full mt-4 text-sm text-gray-400 hover:text-gray-600 transition-colors">Închide</button>
+
+            <button onClick={()=>setCalUrl(null)}
+              className="w-full mt-4 text-sm text-gray-400 hover:text-gray-600 transition-colors">
+              Închide
+            </button>
           </div>
         </div>
       )}
@@ -188,7 +209,8 @@ export default function EventsPage() {
                   </select>
                 </div>
                 <div><label className="label">Contact</label>
-                  <select {...inp('lead_id')} className="input"><option value="">— niciun contact —</option>
+                  <select {...inp('lead_id')} className="input">
+                    <option value="">— niciun contact —</option>
                     {leads.map((l:any)=><option key={l.id} value={l.id}>{l.name}</option>)}
                   </select>
                 </div>
