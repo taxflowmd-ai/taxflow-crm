@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --green: #004437;
+    --green-dark: #002e25;
+    --green-light: #005a47;
+    --green-pale: #e8f0ee;
+    --accent: #00c48c;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  h1, h2, h3, .font-serif {
+    font-family: 'DM Serif Display', serif;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-[#004437] text-white px-4 py-2 rounded-lg text-sm font-medium
+           hover:bg-[#005a47] transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+           inline-flex items-center gap-2;
+  }
+
+  .btn-outline {
+    @apply border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium
+           hover:bg-gray-50 transition-colors inline-flex items-center gap-2;
+  }
+
+  .btn-ghost {
+    @apply text-gray-500 px-4 py-2 rounded-lg text-sm font-medium
+           hover:bg-gray-100 transition-colors inline-flex items-center gap-2;
+  }
+
+  .btn-danger {
+    @apply bg-red-50 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm font-medium
+           hover:bg-red-100 transition-colors inline-flex items-center gap-2;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900
+           focus:outline-none focus:ring-2 focus:ring-[#004437]/20 focus:border-[#004437]
+           placeholder:text-gray-400 transition-colors;
+  }
+
+  .label {
+    @apply block text-xs font-medium text-gray-700 mb-1;
+  }
+
+  .card {
+    @apply bg-white border border-gray-200 rounded-xl shadow-sm;
+  }
+
+  .badge-status {
+    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-white/65
+           cursor-pointer transition-all hover:bg-white/[0.07] hover:text-white;
+  }
+
+  .sidebar-item.active {
+    @apply bg-[#00c48c]/15 text-[#00c48c] font-medium;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+  }
+}

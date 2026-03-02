@@ -1,0 +1,21 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/admin/invite/route": "app/api/admin/invite/route.js",
+  "/api/admin/users/[id]/toggle/route": "app/api/admin/users/[id]/toggle/route.js",
+  "/api/leads/[id]/route": "app/api/leads/[id]/route.js",
+  "/api/whatsapp/conversation/route": "app/api/whatsapp/conversation/route.js",
+  "/api/whatsapp/send/route": "app/api/whatsapp/send/route.js",
+  "/api/whatsapp/webhook/route": "app/api/whatsapp/webhook/route.js",
+  "/auth/invite/[token]/page": "app/auth/invite/[token]/page.js",
+  "/api/auth/accept-invite/route": "app/api/auth/accept-invite/route.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/page": "app/page.js",
+  "/(app)/contacts/page": "app/(app)/contacts/page.js",
+  "/(app)/events/page": "app/(app)/events/page.js",
+  "/(app)/pipeline/page": "app/(app)/pipeline/page.js",
+  "/(app)/tasks/page": "app/(app)/tasks/page.js",
+  "/(app)/whatsapp/page": "app/(app)/whatsapp/page.js",
+  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
+  "/(app)/admin/users/page": "app/(app)/admin/users/page.js",
+  "/(app)/import/page": "app/(app)/import/page.js"
+}
