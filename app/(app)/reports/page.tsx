@@ -24,7 +24,7 @@ function ObligationsModal({ client, reportTypes, current, onSave, onClose }: any
           <h2 className="font-semibold text-gray-900">Obligații fiscale</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16}/></button>
         </div>
-        <p className="text-xs text-gray-500 mb-4">{client?.name}{client?.company ? ` · ${client.company}` : ''}</p>
+        <p className="text-xs text-gray-500 mb-4">{client?.company || client?.name}{client?.company ? ` · ${client.name}` : ''}</p>
         <div className="space-y-1 mb-5 max-h-72 overflow-y-auto">
           {reportTypes.map((t: any) => (
             <label key={t.id} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-gray-50">
@@ -192,16 +192,13 @@ export default function ReportsPage() {
     const admin = (prof as any)?.role === 'admin'
     setIsAdmin(admin)
 
-    // Încarcă echipa doar pentru admin
     if (admin) {
       const { data: tm } = await (supabase as any).from('profiles').select('id,full_name,avatar_color').eq('is_active', true).order('full_name')
       setTeam(tm || [])
     }
 
-    // Determină filtrul activ
     const activeFilter = filterUserId === 'all' ? null : filterUserId === 'mine' ? user.id : filterUserId
 
-    // Query leads — filtrează după assigned_to dacă e setat
     let leadsQuery = (supabase as any).from('leads').select('id,name,company,assigned_to').eq('status','Client activ').order('company')
     if (activeFilter) leadsQuery = leadsQuery.eq('assigned_to', activeFilter)
 
@@ -268,8 +265,6 @@ export default function ReportsPage() {
   }, 0)
 
   const settingsClient = clients.find(c => c.id === showSettings)
-
-  // Label filtru activ
   const filterLabel = filterUserId === 'all' ? 'Toți responsabilii'
     : filterUserId === 'mine' ? 'Clienții mei'
     : team.find(t => t.id === filterUserId)?.full_name || 'Filtru'
@@ -283,11 +278,11 @@ export default function ReportsPage() {
             <span className="text-green-600 font-medium">{totalDone} prezentate</span>
             {' · '}
             <span className="text-red-400 font-medium">{totalPending} în așteptare</span>
+            {' · '}
+            <span className="text-gray-400">{clients.length} clienți</span>
           </p>
         </div>
         <div className="flex items-center gap-2">
-
-          {/* Filtru per user */}
           <div className="relative">
             <select
               value={filterUserId}
@@ -302,7 +297,6 @@ export default function ReportsPage() {
             </select>
             <Users size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
           </div>
-
           <button onClick={() => setShowConfig(true)}
             className="flex items-center gap-1.5 text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
             <Settings2 size={13}/> Configurare
@@ -324,18 +318,27 @@ export default function ReportsPage() {
           <div className="text-center py-16 text-gray-400 text-sm">Se încarcă...</div>
         ) : (
           <>
-            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-x-auto">
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-auto max-h-[calc(100vh-140px)]">
               <table className="w-full border-collapse text-sm">
-                <thead>
+
+                {/* ── HEADER STICKY ── */}
+                <thead className="sticky top-0 z-20">
                   <tr className="bg-[#004437] text-white">
-                    <th className="text-left px-4 py-3 font-semibold rounded-tl-xl sticky left-0 bg-[#004437] min-w-[200px]">
+
+                    {/* Coloana # */}
+                    <th className="sticky left-0 z-30 bg-[#004437] text-center px-3 py-3 font-semibold text-xs w-10 rounded-tl-xl">
+                      #
+                    </th>
+
+                    {/* Coloana Client */}
+                    <th className="sticky left-10 z-30 bg-[#004437] text-left px-4 py-3 font-semibold min-w-[220px]">
                       Client
                       {filterUserId !== 'all' && (
-                        <span className="ml-2 text-[10px] text-white/50 font-normal">
-                          · {filterLabel}
-                        </span>
+                        <span className="ml-2 text-[10px] text-white/50 font-normal">· {filterLabel}</span>
                       )}
                     </th>
+
+                    {/* Coloane rapoarte */}
                     {reportTypes.map((t, i) => (
                       <th key={t.id} className={`px-2 py-3 font-semibold text-center min-w-[64px] text-xs ${i === reportTypes.length-1 ? 'rounded-tr-xl' : ''}`}>
                         {t.code}
@@ -344,6 +347,8 @@ export default function ReportsPage() {
                     <th className="px-2 py-3 min-w-[44px]"></th>
                   </tr>
                 </thead>
+
+                {/* ── BODY ── */}
                 <tbody>
                   {clients.map((client: any, ci: number) => {
                     const clientObls = obligations[client.id] || []
@@ -351,8 +356,15 @@ export default function ReportsPage() {
                     const progress = clientObls.length > 0 ? Math.round((doneCount / clientObls.length) * 100) : 0
                     return (
                       <tr key={client.id} className={`border-b border-gray-100 hover:bg-gray-50/50 group ${ci % 2 === 0 ? '' : 'bg-gray-50/30'}`}>
-                        <td className="px-4 py-2.5 sticky left-0 bg-white group-hover:bg-gray-50/50">
-                          {client.company && <div className="font-medium text-gray-900">{client.company}</div>}
+
+                        {/* Celula # */}
+                        <td className="sticky left-0 z-10 bg-white group-hover:bg-gray-50/50 text-center px-3 py-2.5 text-xs font-semibold text-gray-400 border-r border-gray-100">
+                          {ci + 1}
+                        </td>
+
+                        {/* Celula Client */}
+                        <td className="sticky left-10 z-10 bg-white group-hover:bg-gray-50/50 px-4 py-2.5 border-r border-gray-100">
+                          {client.company && <div className="font-medium text-gray-900 text-sm">{client.company}</div>}
                           <div className="text-[11px] text-gray-400">{client.name}</div>
                           {clientObls.length > 0 && (
                             <div className="flex items-center gap-1.5 mt-1">
@@ -363,6 +375,8 @@ export default function ReportsPage() {
                             </div>
                           )}
                         </td>
+
+                        {/* Celule rapoarte */}
                         {reportTypes.map(t => {
                           const hasObl = clientObls.includes(t.id)
                           const key = `${client.id}_${t.id}`
@@ -386,6 +400,8 @@ export default function ReportsPage() {
                             </td>
                           )
                         })}
+
+                        {/* Buton setări */}
                         <td className="px-2 py-1.5 text-center">
                           <button onClick={() => setShowSettings(client.id)}
                             className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center mx-auto text-gray-300 hover:text-[#004437] hover:border-[#004437] transition-colors opacity-0 group-hover:opacity-100">
@@ -397,7 +413,7 @@ export default function ReportsPage() {
                   })}
                   {clients.length === 0 && (
                     <tr>
-                      <td colSpan={reportTypes.length + 2} className="text-center py-16 text-gray-400 text-sm">
+                      <td colSpan={reportTypes.length + 3} className="text-center py-16 text-gray-400 text-sm">
                         {filterUserId !== 'all'
                           ? `Niciun client activ pentru ${filterLabel}.`
                           : 'Niciun client activ. Schimbă statusul în Client activ în Pipeline.'
@@ -408,6 +424,8 @@ export default function ReportsPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Legendă + total clienți */}
             <div className="flex items-center gap-5 mt-3">
               <span className="text-xs text-gray-400 font-medium">Legendă:</span>
               {(Object.entries(STATUS_CFG) as [Status, typeof STATUS_CFG[Status]][]).map(([key, cfg]) => (
