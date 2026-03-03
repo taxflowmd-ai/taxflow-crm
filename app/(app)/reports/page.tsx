@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { ChevronLeft, ChevronRight, Settings2, X, Plus, Pencil, Trash2, GripVertical } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Settings2, X, Plus, Pencil, Trash2, GripVertical, Users } from 'lucide-react'
 
 const MONTHS_FULL = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie']
 
@@ -15,7 +15,6 @@ const STATUS_CFG = {
 type Status = 'pending' | 'in_progress' | 'done' | 'na'
 const CYCLE: Status[] = ['pending', 'in_progress', 'done', 'na']
 
-// ── Modal Obligații per client ──
 function ObligationsModal({ client, reportTypes, current, onSave, onClose }: any) {
   const [selected, setSelected] = useState<string[]>(current)
   return (
@@ -48,7 +47,6 @@ function ObligationsModal({ client, reportTypes, current, onSave, onClose }: any
   )
 }
 
-// ── Modal Configurare tipuri rapoarte ──
 function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
   const [types, setTypes] = useState<any[]>(reportTypes)
   const [editId, setEditId] = useState<string | null>(null)
@@ -61,8 +59,7 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
     if (!newForm.code || !newForm.label) { toast.error('Completează codul și denumirea'); return }
     setSaving(true)
     const res = await fetch('/api/report-types', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...newForm, sort_order: types.length + 1 }),
     })
     const json = await res.json()
@@ -78,8 +75,7 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
   async function handleEdit(id: string) {
     setSaving(true)
     const res = await fetch('/api/report-types', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, ...editForm }),
     })
     const json = await res.json()
@@ -94,15 +90,11 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
   async function handleDelete(id: string, code: string) {
     if (!confirm(`Ștergi tipul "${code}"? Toate rapoartele asociate vor fi pierdute.`)) return
     const res = await fetch('/api/report-types', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id }),
     })
-    if (res.ok) {
-      setTypes(t => t.filter(x => x.id !== id))
-      toast.success('Tip șters')
-      onRefresh()
-    } else toast.error('Eroare la ștergere')
+    if (res.ok) { setTypes(t => t.filter(x => x.id !== id)); toast.success('Tip șters'); onRefresh() }
+    else toast.error('Eroare la ștergere')
   }
 
   return (
@@ -115,7 +107,6 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18}/></button>
         </div>
-
         <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
           {types.map(t => (
             <div key={t.id} className="flex items-center gap-2 p-2.5 border border-gray-200 rounded-xl hover:border-gray-300 transition-colors">
@@ -130,28 +121,20 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
                     className="text-xs bg-[#004437] text-white px-2.5 py-1 rounded-lg hover:bg-[#005a47] flex-shrink-0">
                     {saving ? '...' : 'Salvează'}
                   </button>
-                  <button onClick={() => setEditId(null)} className="text-xs text-gray-400 hover:text-gray-600 flex-shrink-0">
-                    <X size={14}/>
-                  </button>
+                  <button onClick={() => setEditId(null)} className="text-gray-400 hover:text-gray-600 flex-shrink-0"><X size={14}/></button>
                 </>
               ) : (
                 <>
                   <span className="text-sm font-bold text-gray-700 w-16 flex-shrink-0 font-mono">{t.code}</span>
                   <span className="text-sm text-gray-500 flex-1">{t.label}</span>
                   <button onClick={() => { setEditId(t.id); setEditForm({ code: t.code, label: t.label }) }}
-                    className="text-gray-300 hover:text-[#004437] transition-colors flex-shrink-0">
-                    <Pencil size={13}/>
-                  </button>
+                    className="text-gray-300 hover:text-[#004437] transition-colors flex-shrink-0"><Pencil size={13}/></button>
                   <button onClick={() => handleDelete(t.id, t.code)}
-                    className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0">
-                    <Trash2 size={13}/>
-                  </button>
+                    className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"><Trash2 size={13}/></button>
                 </>
               )}
             </div>
           ))}
-
-          {/* Adaugă nou */}
           {adding ? (
             <div className="flex items-center gap-2 p-2.5 border-2 border-dashed border-[#004437] rounded-xl">
               <Plus size={14} className="text-[#004437] flex-shrink-0"/>
@@ -164,9 +147,7 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
                 className="text-xs bg-[#004437] text-white px-2.5 py-1 rounded-lg flex-shrink-0">
                 {saving ? '...' : 'Adaugă'}
               </button>
-              <button onClick={() => setAdding(false)} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
-                <X size={14}/>
-              </button>
+              <button onClick={() => setAdding(false)} className="text-gray-400 hover:text-gray-600 flex-shrink-0"><X size={14}/></button>
             </div>
           ) : (
             <button onClick={() => setAdding(true)}
@@ -175,7 +156,6 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
             </button>
           )}
         </div>
-
         <div className="px-6 py-4 border-t border-gray-100">
           <button onClick={onClose} className="btn-primary w-full">Închide</button>
         </div>
@@ -184,7 +164,6 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
   )
 }
 
-// ── Pagina principală ──
 export default function ReportsPage() {
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
@@ -196,16 +175,43 @@ export default function ReportsPage() {
   const [showSettings, setShowSettings] = useState<string | null>(null)
   const [showConfig, setShowConfig] = useState(false)
   const [saving, setSaving] = useState<string | null>(null)
+  const [team, setTeam] = useState<any[]>([])
+  const [filterUserId, setFilterUserId] = useState<string>('all')
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [currentUserId, setCurrentUserId] = useState<string>('')
 
   const load = useCallback(async () => {
     setLoading(true)
     const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    setCurrentUserId(user.id)
+
+    const { data: prof } = await (supabase as any).from('profiles').select('role').eq('id', user.id).single()
+    const admin = (prof as any)?.role === 'admin'
+    setIsAdmin(admin)
+
+    // Încarcă echipa doar pentru admin
+    if (admin) {
+      const { data: tm } = await (supabase as any).from('profiles').select('id,full_name,avatar_color').eq('is_active', true).order('full_name')
+      setTeam(tm || [])
+    }
+
+    // Determină filtrul activ
+    const activeFilter = filterUserId === 'all' ? null : filterUserId === 'mine' ? user.id : filterUserId
+
+    // Query leads — filtrează după assigned_to dacă e setat
+    let leadsQuery = (supabase as any).from('leads').select('id,name,company,assigned_to').eq('status','Client activ').order('name')
+    if (activeFilter) leadsQuery = leadsQuery.eq('assigned_to', activeFilter)
+
     const [{ data: leads }, { data: types }, { data: obls }, { data: reps }] = await Promise.all([
-      (supabase as any).from('leads').select('id,name,company').eq('status','Client activ').order('name'),
+      leadsQuery,
       (supabase as any).from('report_types').select('*').order('sort_order'),
       (supabase as any).from('client_obligations').select('lead_id,report_type_id').eq('is_active', true),
       (supabase as any).from('compliance_reports').select('lead_id,report_type_id,status').eq('year', year).eq('month', month),
     ])
+
     setClients(leads || [])
     setReportTypes(types || [])
     const oblMap: Record<string, string[]> = {}
@@ -218,7 +224,7 @@ export default function ReportsPage() {
     for (const r of (reps || [])) repMap[`${r.lead_id}_${r.report_type_id}`] = r.status
     setReports(repMap)
     setLoading(false)
-  }, [year, month])
+  }, [year, month, filterUserId])
 
   useEffect(() => { load() }, [load])
 
@@ -230,23 +236,19 @@ export default function ReportsPage() {
     setReports(r => ({ ...r, [key]: next }))
     try {
       const res = await fetch('/api/compliance', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId, reportTypeId: typeId, year, month, status: next }),
       })
       if (!res.ok) throw new Error()
     } catch {
       setReports(r => ({ ...r, [key]: current }))
       toast.error('Eroare la salvare')
-    } finally {
-      setSaving(null)
-    }
+    } finally { setSaving(null) }
   }
 
   async function saveObligations(leadId: string, selectedIds: string[]) {
     const res = await fetch('/api/compliance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ leadId, reportTypeIds: selectedIds }),
     })
     if (res.ok) {
@@ -267,6 +269,11 @@ export default function ReportsPage() {
 
   const settingsClient = clients.find(c => c.id === showSettings)
 
+  // Label filtru activ
+  const filterLabel = filterUserId === 'all' ? 'Toți responsabilii'
+    : filterUserId === 'mine' ? 'Clienții mei'
+    : team.find(t => t.id === filterUserId)?.full_name || 'Filtru'
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
@@ -279,6 +286,23 @@ export default function ReportsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+
+          {/* Filtru per user */}
+          <div className="relative">
+            <select
+              value={filterUserId}
+              onChange={e => setFilterUserId(e.target.value)}
+              className="appearance-none pl-7 pr-8 py-1.5 text-xs border border-gray-200 rounded-lg bg-white hover:border-gray-300 transition-colors text-gray-600 cursor-pointer focus:outline-none focus:border-[#004437]"
+            >
+              <option value="all">👥 Toți responsabilii</option>
+              <option value="mine">👤 Clienții mei</option>
+              {isAdmin && team.map(m => (
+                <option key={m.id} value={m.id}>{m.full_name}</option>
+              ))}
+            </select>
+            <Users size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
+          </div>
+
           <button onClick={() => setShowConfig(true)}
             className="flex items-center gap-1.5 text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
             <Settings2 size={13}/> Configurare
@@ -306,6 +330,11 @@ export default function ReportsPage() {
                   <tr className="bg-[#004437] text-white">
                     <th className="text-left px-4 py-3 font-semibold rounded-tl-xl sticky left-0 bg-[#004437] min-w-[200px]">
                       Client
+                      {filterUserId !== 'all' && (
+                        <span className="ml-2 text-[10px] text-white/50 font-normal">
+                          · {filterLabel}
+                        </span>
+                      )}
                     </th>
                     {reportTypes.map((t, i) => (
                       <th key={t.id} className={`px-2 py-3 font-semibold text-center min-w-[64px] text-xs ${i === reportTypes.length-1 ? 'rounded-tr-xl' : ''}`}>
@@ -349,9 +378,7 @@ export default function ReportsPage() {
                           )
                           return (
                             <td key={t.id} className="px-1 py-1.5 text-center">
-                              <button
-                                onClick={() => cycleStatus(client.id, t.id)}
-                                disabled={!!isSaving}
+                              <button onClick={() => cycleStatus(client.id, t.id)} disabled={!!isSaving}
                                 title={cfg.title}
                                 className={`w-full h-8 rounded-lg text-sm font-bold transition-all hover:scale-105 active:scale-95 ${cfg.bg} ${cfg.text} ${isSaving ? 'opacity-40' : ''}`}>
                                 {isSaving ? '·' : cfg.label}
@@ -360,8 +387,7 @@ export default function ReportsPage() {
                           )
                         })}
                         <td className="px-2 py-1.5 text-center">
-                          <button
-                            onClick={() => setShowSettings(client.id)}
+                          <button onClick={() => setShowSettings(client.id)}
                             className="w-7 h-7 rounded-lg border border-gray-200 flex items-center justify-center mx-auto text-gray-300 hover:text-[#004437] hover:border-[#004437] transition-colors opacity-0 group-hover:opacity-100">
                             <Settings2 size={12}/>
                           </button>
@@ -372,7 +398,10 @@ export default function ReportsPage() {
                   {clients.length === 0 && (
                     <tr>
                       <td colSpan={reportTypes.length + 2} className="text-center py-16 text-gray-400 text-sm">
-                        Niciun client activ. Schimbă statusul în <strong>Client activ</strong> în Pipeline sau Contacte.
+                        {filterUserId !== 'all'
+                          ? `Niciun client activ pentru ${filterLabel}.`
+                          : 'Niciun client activ. Schimbă statusul în Client activ în Pipeline.'
+                        }
                       </td>
                     </tr>
                   )}
