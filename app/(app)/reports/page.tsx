@@ -202,7 +202,7 @@ export default function ReportsPage() {
     const activeFilter = filterUserId === 'all' ? null : filterUserId === 'mine' ? user.id : filterUserId
 
     // Query leads — filtrează după assigned_to dacă e setat
-    let leadsQuery = (supabase as any).from('leads').select('id,name,company,assigned_to').eq('status','Client activ').order('name')
+    let leadsQuery = (supabase as any).from('leads').select('id,name,company,assigned_to').eq('status','Client activ').order('company')
     if (activeFilter) leadsQuery = leadsQuery.eq('assigned_to', activeFilter)
 
     const [{ data: leads }, { data: types }, { data: obls }, { data: reps }] = await Promise.all([
