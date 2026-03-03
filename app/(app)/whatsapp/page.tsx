@@ -56,15 +56,42 @@ export default function WhatsAppPage() {
   const searchParams = useSearchParams()
   const supabase = createClient()
 
-  async function loadConversations() {
-    const { data } = await (supabase as any)
-      .from('whatsapp_conversations')
-      .select('*, lead:lead_id(name, status)')
-      .order('last_message_at', { ascending: false })
-    setConversations(data || [])
-    setFiltered(data || [])
-    setLoading(false)
+ async function loadConversations() {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { data: prof } = await (supabase as any)
+    .from('profiles').select('role').eq('id', user.id).single()
+  const isAdmin = (prof as any)?.role === 'admin'
+
+  let query = (supabase as any)
+    .from('whatsapp_conversations')
+    .select('*, lead:lead_id(name, status)')
+    .order('last_message_at', { ascending: false })
+
+  // Non-admin vede doar conversațiile unde lead-ul e asignat lui
+  if (!isAdmin) {
+    const { data: myLeads } = await (supabase as any)
+      .from('leads')
+      .select('id')
+      .eq('assigned_to', user.id)
+    
+    const myLeadIds = (myLeads || []).map((l: any) => l.id)
+    
+    if (myLeadIds.length === 0) {
+      setConversations([])
+      setFiltered([])
+      setLoading(false)
+      return
+    }
+    query = query.in('lead_id', myLeadIds)
   }
+
+  const { data } = await query
+  setConversations(data || [])
+  setFiltered(data || [])
+  setLoading(false)
+}
 
   async function loadMessages(convId: string) {
     setLoadingMsgs(true)
