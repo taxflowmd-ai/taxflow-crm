@@ -202,19 +202,25 @@ export default function ReportsPage() {
     : filterUserId === 'mine' 
     ? user.id 
     : filterUserId
-
-    let leadsQuery = (supabase as any).from('leads').select('id,name,company,assigned_to').eq('status','Client activ').order('company')
-    if (activeFilter) leadsQuery = leadsQuery.eq('assigned_to', activeFilter)
-
-    const [{ data: leads }, { data: types }, { data: obls }, { data: reps }] = await Promise.all([
-      leadsQuery,
+    
+    const activeFilter = filterUserId === 'all' ? null : filterUserId === 'mine' ? user.id : filterUserId
+    
+    // Leads prin API route (ocolește RLS)
+    const leadsRes = await fetch('/api/reports/clients')
+    const leadsJson = await leadsRes.json()
+    const allLeads = leadsJson.data || []
+    const filteredLeads = activeFilter
+      ? allLeads.filter((l: any) => l.assigned_to === activeFilter)
+      : allLeads
+    
+    const [{ data: types }, { data: obls }, { data: reps }] = await Promise.all([
       (supabase as any).from('report_types').select('*').order('sort_order'),
       (supabase as any).from('client_obligations').select('lead_id,report_type_id').eq('is_active', true),
       (supabase as any).from('compliance_reports').select('lead_id,report_type_id,status').eq('year', year).eq('month', month),
     ])
-
-    setClients(leads || [])
+    setClients(filteredLeads)
     setReportTypes(types || [])
+    
     const oblMap: Record<string, string[]> = {}
     for (const o of (obls || [])) {
       if (!oblMap[o.lead_id]) oblMap[o.lead_id] = []
