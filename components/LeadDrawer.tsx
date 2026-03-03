@@ -94,20 +94,23 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
   }
 
   async function handleAddNote() {
-    if (!note.trim() || !leadId) return
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    await (supabase as any).from('lead_history').insert({
-      lead_id: leadId,
-      type: 'note',
-      content: note.trim(),
-      created_by: user?.id,
-    })
-    toast.success('Notă adăugată')
-    setNote('')
-    loadLead(leadId)
-    setTab('history')
-  }
+  if (!note.trim() || !leadId) return
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const { error } = await (supabase as any).from('lead_history').insert({
+    lead_id: leadId,
+    type: 'note',
+    content: note.trim(),
+    action: note.trim(),  // ← câmp obligatoriu
+    created_by: user?.id,
+    user_id: user?.id,    // ← câmp original
+  })
+  if (error) { toast.error(error.message); return }
+  toast.success('Notă adăugată')
+  setNote('')
+  loadLead(leadId)
+  setTab('history')
+}
 
   async function handleDelete() {
     if (!leadId) return
