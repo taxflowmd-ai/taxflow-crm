@@ -352,8 +352,8 @@ export default function ReportsPage() {
                     return (
                       <tr key={client.id} className={`border-b border-gray-100 hover:bg-gray-50/50 group ${ci % 2 === 0 ? '' : 'bg-gray-50/30'}`}>
                         <td className="px-4 py-2.5 sticky left-0 bg-white group-hover:bg-gray-50/50">
-                          <div className="font-medium text-gray-900">{client.name}</div>
-                          {client.company && <div className="text-[11px] text-gray-400">{client.company}</div>}
+                          {client.company && <div className="font-medium text-gray-900">{client.company}</div>}
+                          <div className="text-[11px] text-gray-400">{client.name}</div>
                           {clientObls.length > 0 && (
                             <div className="flex items-center gap-1.5 mt-1">
                               <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden" style={{maxWidth:'80px'}}>
