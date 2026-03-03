@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Plus, CheckSquare, Square, Trash2, RefreshCw } from 'lucide-react'
+import { Plus, CheckSquare, Square, Trash2, RefreshCw, Pencil } from 'lucide-react'
 
 const FILTERS = [
   {id:'all',label:'Toate'},
@@ -20,19 +20,22 @@ const PR_CFG: Record<string,{label:string,cls:string}> = {
 }
 
 const RECURRENCE_LABELS: Record<string,string> = {
-  daily:'Zilnic',
-  weekly:'Săptămânal',
-  monthly:'Lunar',
-  quarterly:'Trimestrial',
-  yearly:'Anual'
+  daily:'Zilnic', weekly:'Săptămânal', monthly:'Lunar', quarterly:'Trimestrial', yearly:'Anual'
 }
 
 const RECURRENCE_MS: Record<string,number> = {
-  daily: 86400000,
-  weekly: 604800000,
-  monthly: 30 * 86400000,
-  quarterly: 91 * 86400000,
-  yearly: 365 * 86400000,
+  daily: 86400000, weekly: 604800000, monthly: 30*86400000, quarterly: 91*86400000, yearly: 365*86400000,
+}
+
+const EMPTY_FORM = {
+  title:'', lead_id:'', priority:'medium', due_at:'', reminder_at:'', assigned_to:'',
+  is_recurring: false, recurrence:'weekly', recurrence_end_at:''
+}
+
+// Formatează dată ISO → datetime-local input
+function toInputDate(iso: string|null) {
+  if (!iso) return ''
+  return new Date(iso).toISOString().slice(0, 16)
 }
 
 export default function TasksPage() {
@@ -40,13 +43,11 @@ export default function TasksPage() {
   const [leads, setLeads] = useState<any[]>([])
   const [filter, setFilter] = useState('all')
   const [showModal, setShowModal] = useState(false)
+  const [editingTask, setEditingTask] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [team, setTeam] = useState<any[]>([])
   const [isAdmin, setIsAdmin] = useState(false)
-  const [form, setForm] = useState({
-    title:'', lead_id:'', priority:'medium', due_at:'', reminder_at:'', assigned_to:'',
-    is_recurring: false, recurrence:'weekly', recurrence_end_at:''
-  })
+  const [form, setForm] = useState<any>(EMPTY_FORM)
 
   async function load() {
     const supabase = createClient()
@@ -83,29 +84,43 @@ export default function TasksPage() {
     return true
   })
 
+  function openAdd() {
+    setEditingTask(null)
+    setForm(EMPTY_FORM)
+    setShowModal(true)
+  }
+
+  function openEdit(t: any) {
+    setEditingTask(t)
+    setForm({
+      title: t.title || '',
+      lead_id: t.lead_id || '',
+      priority: t.priority || 'medium',
+      due_at: toInputDate(t.due_at),
+      reminder_at: toInputDate(t.reminder_at),
+      assigned_to: t.assigned_to || '',
+      is_recurring: t.is_recurring || false,
+      recurrence: t.recurrence || 'weekly',
+      recurrence_end_at: t.recurrence_end_at ? t.recurrence_end_at.slice(0,10) : '',
+    })
+    setShowModal(true)
+  }
+
   async function toggleTask(id:string, done:boolean, task:any) {
     const supabase = createClient()
     await (supabase as any).from('tasks').update({
-      is_done:!done,
-      done_at:!done?new Date().toISOString():null
+      is_done:!done, done_at:!done?new Date().toISOString():null
     }).eq('id',id)
 
-    // Dacă e recurentă și o bifăm ca done → creează următoarea
     if(!done && task.is_recurring && task.recurrence && task.due_at) {
       const nextDue = new Date(new Date(task.due_at).getTime() + RECURRENCE_MS[task.recurrence])
       const endAt = task.recurrence_end_at ? new Date(task.recurrence_end_at) : null
-
       if(!endAt || nextDue <= endAt) {
         await (supabase as any).from('tasks').insert({
-          title: task.title,
-          lead_id: task.lead_id,
-          priority: task.priority,
-          due_at: nextDue.toISOString(),
-          reminder_at: task.reminder_at,
-          assigned_to: task.assigned_to,
-          created_by: task.created_by,
-          is_recurring: true,
-          recurrence: task.recurrence,
+          title: task.title, lead_id: task.lead_id, priority: task.priority,
+          due_at: nextDue.toISOString(), reminder_at: task.reminder_at,
+          assigned_to: task.assigned_to, created_by: task.created_by,
+          is_recurring: true, recurrence: task.recurrence,
           recurrence_end_at: task.recurrence_end_at,
           parent_task_id: task.parent_task_id || task.id,
         })
@@ -116,7 +131,6 @@ export default function TasksPage() {
     } else {
       setTasks(ts=>ts.map((t:any)=>t.id===id?{...t,is_done:!done}:t))
     }
-
     load()
   }
 
@@ -127,10 +141,11 @@ export default function TasksPage() {
     toast.success('Sarcină ștearsă')
   }
 
-  async function handleAdd(e:React.FormEvent) {
+  async function handleSubmit(e:React.FormEvent) {
     e.preventDefault()
     const supabase = createClient()
     const {data:{user}} = await supabase.auth.getUser()
+
     const payload: any = {
       title: form.title,
       lead_id: form.lead_id||null,
@@ -138,22 +153,33 @@ export default function TasksPage() {
       due_at: form.due_at||null,
       reminder_at: form.reminder_at||null,
       assigned_to: form.assigned_to||user?.id,
-      created_by: user?.id,
       is_recurring: form.is_recurring,
       recurrence: form.is_recurring ? form.recurrence : null,
       recurrence_end_at: form.is_recurring && form.recurrence_end_at ? form.recurrence_end_at : null,
     }
-    const {error} = await (supabase as any).from('tasks').insert(payload)
-    if(error){toast.error(error.message);return}
-    toast.success('Sarcină adăugată')
+
+    if (editingTask) {
+      // EDITARE
+      const {error} = await (supabase as any).from('tasks').update(payload).eq('id', editingTask.id)
+      if(error){toast.error(error.message);return}
+      toast.success('Sarcină actualizată')
+    } else {
+      // ADĂUGARE
+      payload.created_by = user?.id
+      const {error} = await (supabase as any).from('tasks').insert(payload)
+      if(error){toast.error(error.message);return}
+      toast.success('Sarcină adăugată')
+    }
+
     setShowModal(false)
-    setForm({title:'',lead_id:'',priority:'medium',due_at:'',reminder_at:'',assigned_to:'',is_recurring:false,recurrence:'weekly',recurrence_end_at:''})
+    setForm(EMPTY_FORM)
+    setEditingTask(null)
     load()
   }
 
   const inp=(field:string)=>({
     value:(form as any)[field],
-    onChange:(e:any)=>setForm(f=>({...f,[field]:e.target.value})),
+    onChange:(e:any)=>setForm((f:any)=>({...f,[field]:e.target.value})),
     className:'input'
   })
 
@@ -169,7 +195,7 @@ export default function TasksPage() {
             {recurringCount > 0 && <span className="ml-2 text-[#004437]">· {recurringCount} recurente</span>}
           </p>
         </div>
-        <button onClick={()=>setShowModal(true)} className="btn-primary"><Plus size={15}/>Sarcină nouă</button>
+        <button onClick={openAdd} className="btn-primary"><Plus size={15}/>Sarcină nouă</button>
       </div>
 
       {/* Filtre */}
@@ -194,10 +220,14 @@ export default function TasksPage() {
               const isToday = t.due_at && new Date(t.due_at)>=todayStart && new Date(t.due_at)<=todayEnd
               const pr = PR_CFG[t.priority]||PR_CFG.medium
               return (
-                <div key={t.id} className={`bg-white border rounded-xl p-4 flex items-start gap-3 shadow-sm hover:shadow-md transition-all ${t.is_done?'opacity-50':'border-gray-200'} ${t.is_recurring&&!t.is_done?'border-l-4 border-l-[#004437]':''}`}>
+                <div key={t.id} className={`bg-white border rounded-xl p-4 flex items-start gap-3 shadow-sm hover:shadow-md transition-all group ${t.is_done?'opacity-50':'border-gray-200'} ${t.is_recurring&&!t.is_done?'border-l-4 border-l-[#004437]':''}`}>
+                  
+                  {/* Checkbox */}
                   <button onClick={()=>toggleTask(t.id,t.is_done,t)} className="mt-0.5 flex-shrink-0 text-gray-400 hover:text-[#004437] transition-colors">
                     {t.is_done?<CheckSquare size={18} className="text-[#00c48c]"/>:<Square size={18}/>}
                   </button>
+
+                  {/* Conținut */}
                   <div className="flex-1 min-w-0">
                     <div className={`text-sm font-medium text-gray-900 flex items-center gap-2 ${t.is_done?'line-through text-gray-400':''}`}>
                       {t.title}
@@ -216,27 +246,49 @@ export default function TasksPage() {
                       {t.recurrence_end_at&&<span className="text-[10px] text-gray-400">până {new Date(t.recurrence_end_at).toLocaleDateString('ro-RO',{day:'2-digit',month:'short',year:'numeric'})}</span>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    {t.assignee&&<div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{background:t.assignee.avatar_color}} title={t.assignee.full_name}>{t.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}</div>}
-                    <button onClick={()=>deleteTask(t.id)} className="text-gray-300 hover:text-red-500 transition-colors"><Trash2 size={14}/></button>
+
+                  {/* Acțiuni */}
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {t.assignee&&(
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{background:t.assignee.avatar_color}} title={t.assignee.full_name}>
+                        {t.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}
+                      </div>
+                    )}
+                    {/* Buton editare — apare la hover */}
+                    <button
+                      onClick={()=>openEdit(t)}
+                      className="text-gray-300 hover:text-[#004437] transition-colors opacity-0 group-hover:opacity-100"
+                      title="Editează sarcina">
+                      <Pencil size={14}/>
+                    </button>
+                    <button onClick={()=>deleteTask(t.id)} className="text-gray-300 hover:text-red-500 transition-colors">
+                      <Trash2 size={14}/>
+                    </button>
                   </div>
                 </div>
               )
             })}
-            {filtered.length===0&&<div className="text-center py-16 text-gray-400"><div className="text-3xl mb-2">✅</div><p className="text-sm">Nicio sarcină</p></div>}
+            {filtered.length===0&&(
+              <div className="text-center py-16 text-gray-400">
+                <div className="text-3xl mb-2">✅</div>
+                <p className="text-sm">Nicio sarcină</p>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* Modal adaugă sarcină */}
+      {/* Modal adaugă / editează sarcină */}
       {showModal&&(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="font-semibold">Sarcină nouă</h2>
-              <button onClick={()=>setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+              <h2 className="font-semibold">
+                {editingTask ? 'Editează sarcina' : 'Sarcină nouă'}
+              </h2>
+              <button onClick={()=>{setShowModal(false);setEditingTask(null)}} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
-            <form onSubmit={handleAdd} className="px-6 py-4 space-y-3">
+            <form onSubmit={handleSubmit} className="px-6 py-4 space-y-3">
               <div>
                 <label className="label">Titlu *</label>
                 <input {...inp('title')} required placeholder="Sună clientul, trimite oferta..."/>
@@ -281,7 +333,7 @@ export default function TasksPage() {
               <div className="border border-gray-200 rounded-xl p-3 space-y-3">
                 <label className="flex items-center gap-2.5 cursor-pointer">
                   <div
-                    onClick={()=>setForm(f=>({...f,is_recurring:!f.is_recurring}))}
+                    onClick={()=>setForm((f:any)=>({...f,is_recurring:!f.is_recurring}))}
                     className={`w-10 h-5 rounded-full transition-colors relative flex-shrink-0 ${form.is_recurring?'bg-[#004437]':'bg-gray-300'}`}>
                     <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.is_recurring?'translate-x-5':'translate-x-0.5'}`}/>
                   </div>
@@ -290,7 +342,6 @@ export default function TasksPage() {
                     Sarcină recurentă
                   </span>
                 </label>
-
                 {form.is_recurring && (
                   <div className="grid grid-cols-2 gap-3 pt-1">
                     <div>
@@ -312,8 +363,10 @@ export default function TasksPage() {
               </div>
 
               <div className="flex justify-end gap-2 pt-2">
-                <button type="button" onClick={()=>setShowModal(false)} className="btn-ghost">Anulează</button>
-                <button type="submit" className="btn-primary">Adaugă</button>
+                <button type="button" onClick={()=>{setShowModal(false);setEditingTask(null)}} className="btn-ghost">Anulează</button>
+                <button type="submit" className="btn-primary">
+                  {editingTask ? 'Salvează modificările' : 'Adaugă'}
+                </button>
               </div>
             </form>
           </div>
