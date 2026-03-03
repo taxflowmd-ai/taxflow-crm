@@ -197,12 +197,6 @@ export default function ReportsPage() {
       setTeam(tm || [])
     }
 
-    const activeFilter = filterUserId === 'all' 
-    ? null  // admin vede toți, user normal vede toți
-    : filterUserId === 'mine' 
-    ? user.id 
-    : filterUserId
-    
     const activeFilter = filterUserId === 'all' ? null : filterUserId === 'mine' ? user.id : filterUserId
     
     // Leads prin API route (ocolește RLS)
