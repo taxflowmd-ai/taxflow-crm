@@ -1,26 +1,52 @@
-// app/layout.tsx
-import type { Metadata } from 'next'
-import { Toaster } from 'sonner'
+import type { Metadata, Viewport } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
+import { Toaster } from 'sonner'
+import dynamic from 'next/dynamic'
+const PWARegister = dynamic(() => import('@/components/PWARegister'), { ssr: false })
+
+const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'TaxFlow CRM',
-  description: 'Partner în structurare financiară',
+  description: 'Partner în structurarea financiară',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'TaxFlow',
+  },
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: [
+      { url: '/icons/icon-152.png', sizes: '152x152' },
+      { url: '/icons/icon-192.png', sizes: '192x192' },
+    ],
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#004437',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ro">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap"
-          rel="stylesheet"
-        />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="TaxFlow" />
+        <link rel="apple-touch-icon" href="/icons/icon-152.png" />
+        <link rel="apple-touch-icon" sizes="192x192" href="/icons/icon-192.png" />
       </head>
-      <body className="bg-gray-50 text-gray-900 antialiased">
+      <body className={inter.className}>
+        <PWARegister />
         {children}
-        <Toaster position="bottom-right" richColors />
+        <Toaster position="top-right" richColors />
       </body>
     </html>
   )
