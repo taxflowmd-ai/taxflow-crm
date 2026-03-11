@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Plus, Search, MessageCircle } from 'lucide-react'
@@ -16,6 +17,7 @@ const SRC_CLS: Record<string,string> = {
 }
 
 export default function ContactsPage() {
+  const router = useRouter()
   const [leads, setLeads] = useState<any[]>([])
   const [filtered, setFiltered] = useState<any[]>([])
   const [q, setQ] = useState('')
@@ -51,6 +53,22 @@ export default function ContactsPage() {
     if(srcFilter) r=r.filter(l=>l.source===srcFilter)
     setFiltered(r)
   },[q,stFilter,srcFilter,leads])
+
+  async function openWhatsApp(e: React.MouseEvent, leadId: string, phone: string, name: string) {
+    e.stopPropagation()
+    try {
+      const res = await fetch('/api/whatsapp/conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId, phone, name }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      router.push(`/whatsapp?conv=${json.conversationId}`)
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+  }
 
   async function handleAdd(e:React.FormEvent){
     e.preventDefault()
@@ -118,12 +136,21 @@ export default function ContactsPage() {
                         <div><div className="text-sm font-medium text-gray-900">{l.name}</div><div className="text-xs text-gray-400">{l.company||'—'}</div></div>
                       </div>
                     </td>
-                    <td className="px-4 py-3"><a href={`tel:${l.phone}`} className="text-sm text-[#004437] hover:underline">{l.phone||'—'}</a></td>
+                    <td className="px-4 py-3"><a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} className="text-sm text-[#004437] hover:underline">{l.phone||'—'}</a></td>
                     <td className="px-4 py-3 text-sm text-gray-500">{l.email||'—'}</td>
                     <td className="px-4 py-3"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span></td>
                     <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{background:sc+'22',color:sc}}><span className="w-1.5 h-1.5 rounded-full" style={{background:sc}}/>{l.status}</span></td>
                     <td className="px-4 py-3">{l.assignee&&<div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:l.assignee.avatar_color}} title={l.assignee.full_name}>{l.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}</div>}</td>
-                    <td className="px-4 py-3">{l.phone&&<a href={`https://wa.me/${l.phone.replace(/\D/g,'')}`} target="_blank" className="p-1.5 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-colors inline-flex"><MessageCircle size={13}/></a>}</td>
+                    <td className="px-4 py-3">
+                      {l.phone&&(
+                        <button
+                          onClick={(e) => openWhatsApp(e, l.id, l.phone, l.name)}
+                          className="p-1.5 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-colors inline-flex"
+                          title="Deschide în WhatsApp CRM">
+                          <MessageCircle size={13}/>
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 )
               })}
