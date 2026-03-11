@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { X, Save, Trash2, MessageCircle, Phone, Mail, Building2, User, Tag, Calendar, FileText, Clock } from 'lucide-react'
+import { X, Save, Trash2, MessageCircle, Phone, Mail, Building2, User, Tag, Calendar, FileText, Clock, Landmark } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import BankingTab from '@/components/BankingTab'
 
 const STATUSES = ['Nou','Contactat','Întâlnire programată','Ofertă trimisă','Client activ','Pierdut']
 const SOURCES = ['Meta Ads','WhatsApp','Organic','Referință','Site web','Import']
@@ -26,7 +27,7 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [note, setNote] = useState('')
-  const [tab, setTab] = useState<'info'|'note'|'history'>('info')
+  const [tab, setTab] = useState<'info'|'note'|'history'|'banking'>('info')
   const [form, setForm] = useState<any>({})
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -94,23 +95,23 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
   }
 
   async function handleAddNote() {
-  if (!note.trim() || !leadId) return
-  const supabase = createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const { error } = await (supabase as any).from('lead_history').insert({
-    lead_id: leadId,
-    type: 'note',
-    content: note.trim(),
-    action: note.trim(),  // ← câmp obligatoriu
-    created_by: user?.id,
-    user_id: user?.id,    // ← câmp original
-  })
-  if (error) { toast.error(error.message); return }
-  toast.success('Notă adăugată')
-  setNote('')
-  loadLead(leadId)
-  setTab('history')
-}
+    if (!note.trim() || !leadId) return
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const { error } = await (supabase as any).from('lead_history').insert({
+      lead_id: leadId,
+      type: 'note',
+      action: note.trim(),
+      content: note.trim(),
+      created_by: user?.id,
+      user_id: user?.id,
+    })
+    if (error) { toast.error(error.message); return }
+    toast.success('Notă adăugată')
+    setNote('')
+    loadLead(leadId)
+    setTab('history')
+  }
 
   async function handleDelete() {
     if (!leadId) return
@@ -151,6 +152,13 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
 
   const sc = ST_COLORS[lead?.status] || '#94a3b8'
   const ini = lead?.name?.split(' ').map((w: string) => w[0]).join('').substring(0,2).toUpperCase() || '??'
+
+  const TABS = [
+    { id: 'info', label: 'Informații' },
+    { id: 'note', label: 'Adaugă notă' },
+    { id: 'history', label: `Istoric (${history.length})` },
+    { id: 'banking', label: '🏦 Bancă' },
+  ]
 
   return (
     <>
@@ -200,10 +208,10 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
         </div>
 
         {/* Tabs */}
-        <div className="px-6 border-b border-gray-200 flex gap-1 flex-shrink-0">
-          {[{id:'info',label:'Informații'},{id:'note',label:'Adaugă notă'},{id:'history',label:`Istoric (${history.length})`}].map(t => (
+        <div className="px-6 border-b border-gray-200 flex gap-1 flex-shrink-0 overflow-x-auto">
+          {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id as any)}
-              className={`px-3 py-2.5 text-xs font-medium border-b-2 transition-colors ${tab===t.id?'border-[#004437] text-[#004437]':'border-transparent text-gray-500 hover:text-gray-700'}`}>
+              className={`px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${tab===t.id?'border-[#004437] text-[#004437]':'border-transparent text-gray-500 hover:text-gray-700'}`}>
               {t.label}
             </button>
           ))}
@@ -332,11 +340,16 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                             {new Date(h.created_at).toLocaleDateString('ro-RO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-600 leading-relaxed">{h.content}</p>
+                        <p className="text-xs text-gray-600 leading-relaxed">{h.content || h.action}</p>
                       </div>
                     </div>
                   ))}
                 </div>
+              )}
+
+              {/* Tab: Banking */}
+              {tab === 'banking' && leadId && (
+                <BankingTab leadId={leadId} isAdmin={isAdmin} />
               )}
             </>
           )}
