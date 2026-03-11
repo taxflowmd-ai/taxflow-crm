@@ -36,6 +36,22 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
     router.refresh()
   }
 
+  async function openWhatsApp(e: React.MouseEvent, leadId: string, phone: string, name: string) {
+    e.stopPropagation()
+    try {
+      const res = await fetch('/api/whatsapp/conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId, phone, name }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      router.push(`/whatsapp?conv=${json.conversationId}`)
+    } catch (err: any) {
+      toast.error(err.message)
+    }
+  }
+
   async function handleAddLead(e:React.FormEvent) {
     e.preventDefault()
     const supabase = createClient()
@@ -98,7 +114,8 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                     <div key={l.id} draggable
                       onDragStart={()=>setDragId(l.id)}
                       onDragEnd={()=>setDragId(null)}
-                      className="bg-white border border-gray-200 rounded-lg p-3 cursor-grab shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all" onClick={(e)=>{if(!dragId)setSelectedLeadId(l.id)}}>
+                      className="bg-white border border-gray-200 rounded-lg p-3 cursor-grab shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all"
+                      onClick={()=>{if(!dragId)setSelectedLeadId(l.id)}}>
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span>
                       <div className="text-sm font-semibold text-gray-900 mt-1.5 mb-0.5">{l.name}</div>
                       <div className="text-xs text-gray-500 mb-2">{l.company||'—'}</div>
@@ -108,8 +125,12 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                         {l.assignee&&<div className="w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white" style={{background:l.assignee.avatar_color}}>{l.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}</div>}
                       </div>
                       {l.phone&&<div className="mt-2 pt-2 border-t border-gray-100 flex gap-1">
-                        <a href={`https://wa.me/${l.phone.replace(/\D/g,'')}`} target="_blank" className="text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded hover:bg-green-100">💬 WA</a>
-                        <a href={`tel:${l.phone}`} className="text-[10px] bg-gray-50 text-gray-600 px-2 py-0.5 rounded hover:bg-gray-100">📞</a>
+                        <button
+                          onClick={(e) => openWhatsApp(e, l.id, l.phone, l.name)}
+                          className="text-[10px] bg-green-50 text-green-700 px-2 py-0.5 rounded hover:bg-green-100">
+                          💬 WA
+                        </button>
+                        <a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} className="text-[10px] bg-gray-50 text-gray-600 px-2 py-0.5 rounded hover:bg-gray-100">📞</a>
                       </div>}
                     </div>
                   ))}
