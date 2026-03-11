@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Send, Search, MessageCircle, ExternalLink, RefreshCw } from 'lucide-react'
+import { Send, Search, MessageCircle, ExternalLink, RefreshCw, Archive, Trash2, MoreVertical } from 'lucide-react'
 
 type Conversation = {
   id: string
@@ -13,6 +13,7 @@ type Conversation = {
   last_message_at: string
   unread_count: number
   lead_id: string | null
+  is_archived?: boolean
   lead?: { name: string; status: string }
 }
 
@@ -52,46 +53,44 @@ export default function WhatsAppPage() {
   const [sending, setSending] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadingMsgs, setLoadingMsgs] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
   const searchParams = useSearchParams()
   const supabase = createClient()
 
- async function loadConversations() {
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return
+  async function loadConversations() {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
 
-  const { data: prof } = await (supabase as any)
-    .from('profiles').select('role').eq('id', user.id).single()
-  const isAdmin = (prof as any)?.role === 'admin'
+    const { data: prof } = await (supabase as any)
+      .from('profiles').select('role').eq('id', user.id).single()
+    const isAdmin = (prof as any)?.role === 'admin'
 
-  let query = (supabase as any)
-    .from('whatsapp_conversations')
-    .select('*, lead:lead_id(name, status)')
-    .order('last_message_at', { ascending: false })
+    let query = (supabase as any)
+      .from('whatsapp_conversations')
+      .select('*, lead:lead_id(name, status)')
+      .order('last_message_at', { ascending: false })
 
-  // Non-admin vede doar conversațiile unde lead-ul e asignat lui
-  if (!isAdmin) {
-    const { data: myLeads } = await (supabase as any)
-      .from('leads')
-      .select('id')
-      .eq('assigned_to', user.id)
-    
-    const myLeadIds = (myLeads || []).map((l: any) => l.id)
-    
-    if (myLeadIds.length === 0) {
-      setConversations([])
-      setFiltered([])
-      setLoading(false)
-      return
+    if (!isAdmin) {
+      const { data: myLeads } = await (supabase as any)
+        .from('leads').select('id').eq('assigned_to', user.id)
+      const myLeadIds = (myLeads || []).map((l: any) => l.id)
+      if (myLeadIds.length === 0) {
+        setConversations([])
+        setFiltered([])
+        setLoading(false)
+        return
+      }
+      query = query.in('lead_id', myLeadIds)
     }
-    query = query.in('lead_id', myLeadIds)
-  }
 
-  const { data } = await query
-  setConversations(data || [])
-  setFiltered(data || [])
-  setLoading(false)
-}
+    const { data } = await query
+    setConversations(data || [])
+    setLoading(false)
+  }
 
   async function loadMessages(convId: string) {
     setLoadingMsgs(true)
@@ -103,7 +102,6 @@ export default function WhatsAppPage() {
     setMessages(data || [])
     setLoadingMsgs(false)
 
-    // Resetează unread
     await (supabase as any)
       .from('whatsapp_conversations')
       .update({ unread_count: 0 })
@@ -112,84 +110,116 @@ export default function WhatsAppPage() {
     setConversations(cs => cs.map(c => c.id === convId ? { ...c, unread_count: 0 } : c))
   }
 
-  useEffect(() => {
-    loadConversations().then(() => {
-      const convId = searchParams.get('conv')
-      if (convId) {
-        // selectăm după ce se încarcă lista
-      }
-    })
-  }, [])
+  useEffect(() => { loadConversations() }, [])
 
-  // Auto-selectează conversația din URL
   useEffect(() => {
     const convId = searchParams.get('conv')
     if (convId && conversations.length > 0) {
       const conv = conversations.find(c => c.id === convId)
-      if (conv && (!selected || selected.id !== convId)) {
-        selectConv(conv)
-      }
+      if (conv && (!selected || selected.id !== convId)) selectConv(conv)
     }
   }, [conversations, searchParams])
 
-  // Realtime — mesaje noi
   useEffect(() => {
     const channel = supabase
       .channel('whatsapp_realtime')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'whatsapp_messages',
-      }, (payload) => {
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_messages' }, (payload) => {
         const msg = payload.new as Message
-        if (selected && msg.conversation_id === selected.id) {
-          setMessages(ms => [...ms, msg])
-        }
+        if (selected && msg.conversation_id === selected.id) setMessages(ms => [...ms, msg])
         loadConversations()
       })
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'whatsapp_conversations',
-      }, () => { loadConversations() })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_conversations' }, () => { loadConversations() })
       .subscribe()
-
     return () => { supabase.removeChannel(channel) }
   }, [selected])
 
-  // Auto-scroll la ultimul mesaj
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
   useEffect(() => {
-    if (!q) { setFiltered(conversations); return }
-    setFiltered(conversations.filter(c =>
+    const active = conversations.filter(c => showArchived ? c.is_archived : !c.is_archived)
+    if (!q) { setFiltered(active); return }
+    setFiltered(active.filter(c =>
       c.wa_name?.toLowerCase().includes(q.toLowerCase()) ||
       c.wa_phone?.includes(q) ||
       c.lead?.name?.toLowerCase().includes(q.toLowerCase())
     ))
-  }, [q, conversations])
+  }, [q, conversations, showArchived])
+
+  // Închide meniu la click afară
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+        setConfirmDelete(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   async function selectConv(conv: Conversation) {
     setSelected(conv)
     setMessages([])
     setDraft('')
+    setMenuOpen(false)
+    setConfirmDelete(false)
     await loadMessages(conv.id)
+  }
+
+  async function archiveConversation() {
+    if (!selected) return
+    const newVal = !selected.is_archived
+    await (supabase as any)
+      .from('whatsapp_conversations')
+      .update({ is_archived: newVal })
+      .eq('id', selected.id)
+    toast.success(newVal ? 'Conversație arhivată' : 'Conversație dezarhivată')
+    setMenuOpen(false)
+    setSelected(null)
+    loadConversations()
+  }
+
+  async function deleteConversation() {
+    if (!selected) return
+    // Șterge mesajele mai întâi, apoi conversația
+    await (supabase as any).from('whatsapp_messages').delete().eq('conversation_id', selected.id)
+    await (supabase as any).from('whatsapp_conversations').delete().eq('id', selected.id)
+    toast.success('Conversație ștearsă')
+    setMenuOpen(false)
+    setConfirmDelete(false)
+    setSelected(null)
+    loadConversations()
   }
 
   async function sendMessage() {
     if (!draft.trim() || !selected || sending) return
     setSending(true)
+    const msgText = draft.trim()
     try {
       const res = await fetch('/api/whatsapp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ conversationId: selected.id, message: draft.trim() }),
+        body: JSON.stringify({ conversationId: selected.id, message: msgText }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       setDraft('')
+
+      // Înregistrează în istoricul contactului dacă e legat de un lead
+      if (selected.lead_id) {
+        const { data: { user } } = await supabase.auth.getUser()
+        const convUrl = `${window.location.origin}/whatsapp?conv=${selected.id}`
+        await (supabase as any).from('lead_history').insert({
+          lead_id: selected.lead_id,
+          type: 'whatsapp',
+          action: `💬 Mesaj WhatsApp trimis`,
+          content: `Mesaj trimis pe WhatsApp: "${msgText.length > 80 ? msgText.substring(0, 80) + '...' : msgText}" — [Vezi discuția](${convUrl})`,
+          created_by: user?.id,
+          user_id: user?.id,
+        })
+      }
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -197,7 +227,8 @@ export default function WhatsAppPage() {
     }
   }
 
-  const totalUnread = conversations.reduce((s, c) => s + (c.unread_count || 0), 0)
+  const totalUnread = conversations.filter(c => !c.is_archived).reduce((s, c) => s + (c.unread_count || 0), 0)
+  const archivedCount = conversations.filter(c => c.is_archived).length
 
   return (
     <div className="flex-1 flex overflow-hidden">
@@ -227,6 +258,15 @@ export default function WhatsAppPage() {
               onChange={e => setQ(e.target.value)}
             />
           </div>
+          {/* Toggle arhivate */}
+          {archivedCount > 0 && (
+            <button
+              onClick={() => setShowArchived(v => !v)}
+              className="mt-2 w-full flex items-center gap-2 text-xs text-gray-500 hover:text-[#004437] transition-colors px-1">
+              <Archive size={12} />
+              {showArchived ? 'Înapoi la active' : `Arhivate (${archivedCount})`}
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -247,7 +287,7 @@ export default function WhatsAppPage() {
                 <div
                   key={conv.id}
                   onClick={() => selectConv(conv)}
-                  className={`px-4 py-3 cursor-pointer border-b border-gray-100 transition-colors ${isSelected ? 'bg-[#e8f0ee]' : 'hover:bg-gray-50'}`}
+                  className={`px-4 py-3 cursor-pointer border-b border-gray-100 transition-colors ${isSelected ? 'bg-[#e8f0ee]' : 'hover:bg-gray-50'} ${conv.is_archived ? 'opacity-60' : ''}`}
                 >
                   <div className="flex items-start gap-3">
                     <div className="relative flex-shrink-0">
@@ -299,17 +339,44 @@ export default function WhatsAppPage() {
               {selected.lead_id && (
                 <a href="/contacts" className="flex items-center gap-1.5 text-xs text-[#004437] border border-[#c2d9d3] px-3 py-1.5 rounded-lg hover:bg-[#e8f0ee] transition-colors">
                   <ExternalLink size={12} />
-                  Vezi fișa contact
+                  Fișa contact
                 </a>
               )}
-              <a
-                href={`https://wa.me/${selected.wa_phone}`}
-                target="_blank"
-                className="flex items-center gap-1.5 text-xs text-green-700 border border-green-200 px-3 py-1.5 rounded-lg hover:bg-green-50 transition-colors"
-              >
-                <MessageCircle size={12} />
-                Deschide WA
-              </a>
+              {/* Meniu acțiuni */}
+              <div className="relative" ref={menuRef}>
+                <button
+                  onClick={() => { setMenuOpen(v => !v); setConfirmDelete(false) }}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                  <MoreVertical size={14} />
+                </button>
+                {menuOpen && (
+                  <div className="absolute right-0 top-10 bg-white border border-gray-200 rounded-xl shadow-lg z-50 w-52 overflow-hidden">
+                    <button
+                      onClick={archiveConversation}
+                      className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                      <Archive size={14} className="text-gray-400" />
+                      {selected.is_archived ? 'Dezarhivează' : 'Arhivează conversația'}
+                    </button>
+                    <div className="border-t border-gray-100" />
+                    {!confirmDelete ? (
+                      <button
+                        onClick={() => setConfirmDelete(true)}
+                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors">
+                        <Trash2 size={14} />
+                        Șterge conversația
+                      </button>
+                    ) : (
+                      <div className="px-4 py-3">
+                        <p className="text-xs text-gray-600 mb-2">Ești sigur? Toate mesajele vor fi șterse permanent.</p>
+                        <div className="flex gap-2">
+                          <button onClick={deleteConversation} className="flex-1 text-xs bg-red-500 text-white py-1.5 rounded-lg hover:bg-red-600">Șterge</button>
+                          <button onClick={() => setConfirmDelete(false)} className="flex-1 text-xs border border-gray-200 py-1.5 rounded-lg hover:bg-gray-50">Anulează</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -325,9 +392,7 @@ export default function WhatsAppPage() {
                 return (
                   <div key={msg.id} className={`flex ${isOut ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-xs lg:max-w-md xl:max-w-lg rounded-2xl px-4 py-2.5 shadow-sm ${
-                      isOut
-                        ? 'bg-[#004437] text-white rounded-br-sm'
-                        : 'bg-white text-gray-900 rounded-bl-sm'
+                      isOut ? 'bg-[#004437] text-white rounded-br-sm' : 'bg-white text-gray-900 rounded-bl-sm'
                     }`}>
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body}</p>
                       <div className={`flex items-center gap-1 mt-1 ${isOut ? 'justify-end' : 'justify-start'}`}>
@@ -356,10 +421,7 @@ export default function WhatsAppPage() {
               value={draft}
               onChange={e => setDraft(e.target.value)}
               onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  sendMessage()
-                }
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
               }}
               rows={1}
             />
