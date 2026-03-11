@@ -8,7 +8,7 @@ function createClient() {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll: () => cookieStore.getAll(), setAll: (c) => c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } }
+    { cookies: { getAll: () => cookieStore.getAll(), setAll: (c: { name: string; value: string; options?: any }[]) => c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)) } }
   )
 }
 
