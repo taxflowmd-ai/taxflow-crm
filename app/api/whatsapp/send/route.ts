@@ -1,3 +1,4 @@
+// app/api/whatsapp/send/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createAdmin } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
@@ -22,7 +23,6 @@ export async function POST(req: NextRequest) {
         },
       }
     )
-
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Neautentificat' }, { status: 401 })
 
@@ -32,7 +32,6 @@ export async function POST(req: NextRequest) {
     }
 
     const db = admin()
-
     const { data: conv } = await db
       .from('whatsapp_conversations')
       .select('wa_phone')
@@ -41,13 +40,7 @@ export async function POST(req: NextRequest) {
 
     if (!conv) return NextResponse.json({ error: 'Conversație negăsită' }, { status: 404 })
 
-   const waPhone = (conv as any).wa_phone
-    console.log('META DEBUG:', {
-    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
-    tokenExists: !!process.env.WHATSAPP_ACCESS_TOKEN,
-    tokenPrefix: process.env.WHATSAPP_ACCESS_TOKEN?.substring(0, 10),
-    waPhone,
-    })
+    const waPhone = (conv as any).wa_phone
 
     const metaRes = await fetch(
       `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
@@ -68,8 +61,7 @@ export async function POST(req: NextRequest) {
     )
 
     const metaData = await metaRes.json()
-    console.log('META RESPONSE:', JSON.stringify(metaData))
-    console.log('META STATUS:', metaRes.status)
+
     if (!metaRes.ok) {
       return NextResponse.json({ error: metaData.error?.message || 'Eroare Meta API' }, { status: 400 })
     }
