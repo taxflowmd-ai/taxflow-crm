@@ -156,20 +156,24 @@ export default function WhatsAppPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
   
-  useEffect(() => {
-    if (!selected) return
-    const interval = setInterval(() => {
-      loadMessages(selected.id)
-    }, 10000)
-    return () => clearInterval(interval)
-  }, [selected?.id])
-
-  // Auto-refresh conversații la fiecare 30 secunde
-  useEffect(() => {
-    const interval = setInterval(() => {
-      loadConversations()
-    }, 60000)
-    return () => clearInterval(interval)
+  // Auto-refresh silențios mesaje la fiecare 15 secunde
+    useEffect(() => {
+      if (!selected) return
+      const interval = setInterval(async () => {
+        const { data } = await (supabase as any)
+          .from('whatsapp_messages')
+          .select('*')
+          .eq('conversation_id', selected.id)
+          .order('created_at', { ascending: true })
+        if (data) setMessages(data)
+      }, 15000)
+      return () => clearInterval(interval)
+    }, [selected?.id])
+    
+    // Auto-refresh conversații la fiecare 30 secunde
+    useEffect(() => {
+      const interval = setInterval(() => loadConversations(), 60000)
+      return () => clearInterval(interval)
     }, [])
     
   useEffect(() => {
