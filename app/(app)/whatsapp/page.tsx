@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Send, Search, MessageCircle, ExternalLink, RefreshCw, Archive, Trash2, MoreVertical } from 'lucide-react'
+import { Send, Search, MessageCircle, ExternalLink, RefreshCw, Archive, Trash2, MoreVertical, Zap } from 'lucide-react'
 
 type Conversation = {
   id: string
@@ -33,6 +33,14 @@ const STATUS_COLORS: Record<string, string> = {
   'Ofertă trimisă': '#8b5cf6', 'Client activ': '#00c48c', 'Pierdut': '#e05050'
 }
 
+// Template-urile aprobate în Meta — actualizează cu numele exacte din Meta Business Suite
+const TEMPLATES = [
+  { name: 'hello_world', label: 'Salut (hello_world)', language: 'en_US' },
+  // Adaugă aici template-urile tale aprobate:
+  { name: 'contact', label: 'Bună ziua', language: 'ro' },
+  // { name: 'taxflow_oferta', label: 'Ofertă servicii', language: 'ro' },
+]
+
 function fmtTime(ts: string) {
   const d = new Date(ts)
   const now = new Date()
@@ -41,6 +49,14 @@ function fmtTime(ts: string) {
   if (diff < 3600000) return Math.floor(diff / 60000) + 'm'
   if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })
   return d.toLocaleDateString('ro-RO', { day: '2-digit', month: 'short' })
+}
+
+// Verifică dacă fereastra de 24h e deschisă (ultimul mesaj inbound < 24h)
+function isWindowOpen(messages: Message[]): boolean {
+  const lastInbound = [...messages].reverse().find(m => m.direction === 'inbound')
+  if (!lastInbound) return false
+  const diff = Date.now() - new Date(lastInbound.created_at).getTime()
+  return diff < 24 * 60 * 60 * 1000
 }
 
 export default function WhatsAppPage() {
@@ -56,8 +72,11 @@ export default function WhatsAppPage() {
   const [showArchived, setShowArchived] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [sendingTemplate, setSendingTemplate] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const templateRef = useRef<HTMLDivElement>(null)
   const searchParams = useSearchParams()
   const supabase = createClient()
 
@@ -136,7 +155,23 @@ export default function WhatsAppPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+  
+  useEffect(() => {
+    if (!selected) return
+    const interval = setInterval(() => {
+      loadMessages(selected.id)
+    }, 10000)
+    return () => clearInterval(interval)
+  }, [selected?.id])
 
+  // Auto-refresh conversații la fiecare 30 secunde
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadConversations()
+    }, 60000)
+    return () => clearInterval(interval)
+    }, [])
+    
   useEffect(() => {
     const active = conversations.filter(c => showArchived ? c.is_archived : !c.is_archived)
     if (!q) { setFiltered(active); return }
@@ -147,12 +182,14 @@ export default function WhatsAppPage() {
     ))
   }, [q, conversations, showArchived])
 
-  // Închide meniu la click afară
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         setMenuOpen(false)
         setConfirmDelete(false)
+      }
+      if (templateRef.current && !templateRef.current.contains(e.target as Node)) {
+        setShowTemplates(false)
       }
     }
     document.addEventListener('mousedown', handleClick)
@@ -165,6 +202,7 @@ export default function WhatsAppPage() {
     setDraft('')
     setMenuOpen(false)
     setConfirmDelete(false)
+    setShowTemplates(false)
     await loadMessages(conv.id)
   }
 
@@ -183,7 +221,6 @@ export default function WhatsAppPage() {
 
   async function deleteConversation() {
     if (!selected) return
-    // Șterge mesajele mai întâi, apoi conversația
     await (supabase as any).from('whatsapp_messages').delete().eq('conversation_id', selected.id)
     await (supabase as any).from('whatsapp_conversations').delete().eq('id', selected.id)
     toast.success('Conversație ștearsă')
@@ -191,6 +228,27 @@ export default function WhatsAppPage() {
     setConfirmDelete(false)
     setSelected(null)
     loadConversations()
+  }
+
+  async function sendTemplate(templateName: string, languageCode: string) {
+    if (!selected || sendingTemplate) return
+    setSendingTemplate(true)
+    setShowTemplates(false)
+    try {
+      const res = await fetch('/api/whatsapp/template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: selected.id, templateName, languageCode }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      toast.success('Template trimis')
+      loadMessages(selected.id)
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setSendingTemplate(false)
+    }
   }
 
   async function sendMessage() {
@@ -207,7 +265,6 @@ export default function WhatsAppPage() {
       if (!res.ok) throw new Error(json.error)
       setDraft('')
 
-      // Înregistrează în istoricul contactului dacă e legat de un lead
       if (selected.lead_id) {
         const { data: { user } } = await supabase.auth.getUser()
         const convUrl = `${window.location.origin}/whatsapp?conv=${selected.id}`
@@ -227,6 +284,7 @@ export default function WhatsAppPage() {
     }
   }
 
+  const windowOpen = isWindowOpen(messages)
   const totalUnread = conversations.filter(c => !c.is_archived).reduce((s, c) => s + (c.unread_count || 0), 0)
   const archivedCount = conversations.filter(c => c.is_archived).length
 
@@ -258,7 +316,6 @@ export default function WhatsAppPage() {
               onChange={e => setQ(e.target.value)}
             />
           </div>
-          {/* Toggle arhivate */}
           {archivedCount > 0 && (
             <button
               onClick={() => setShowArchived(v => !v)}
@@ -332,7 +389,15 @@ export default function WhatsAppPage() {
               </div>
               <div>
                 <div className="text-sm font-semibold text-gray-900">{selected.wa_name || selected.wa_phone}</div>
-                <div className="text-xs text-gray-400">+{selected.wa_phone}</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">+{selected.wa_phone}</span>
+                  {/* Indicator fereastră 24h */}
+                  {messages.length > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${windowOpen ? 'bg-green-50 text-green-600' : 'bg-amber-50 text-amber-600'}`}>
+                      {windowOpen ? '● Fereastră deschisă' : '● Fereastră închisă'}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -342,7 +407,6 @@ export default function WhatsAppPage() {
                   Fișa contact
                 </a>
               )}
-              {/* Meniu acțiuni */}
               <div className="relative" ref={menuRef}>
                 <button
                   onClick={() => { setMenuOpen(v => !v); setConfirmDelete(false) }}
@@ -380,6 +444,77 @@ export default function WhatsAppPage() {
             </div>
           </div>
 
+          {/* Banner fereastră închisă */}
+          {messages.length > 0 && !windowOpen && (
+            <div className="bg-amber-50 border-b border-amber-100 px-6 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-amber-700 font-medium">
+                  Fereastra de 24h e închisă — nu poți trimite mesaje libere.
+                </span>
+                <span className="text-xs text-amber-600">Folosește un template aprobat pentru a reiniția conversația.</span>
+              </div>
+              <div className="relative" ref={templateRef}>
+                <button
+                  onClick={() => setShowTemplates(v => !v)}
+                  disabled={sendingTemplate}
+                  className="flex items-center gap-1.5 text-xs bg-amber-600 text-white px-3 py-1.5 rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50">
+                  <Zap size={12} />
+                  {sendingTemplate ? 'Se trimite...' : 'Trimite template'}
+                </button>
+                {showTemplates && (
+                  <div className="absolute right-0 top-9 bg-white border border-gray-200 rounded-xl shadow-lg z-50 w-64 overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-gray-100">
+                      <p className="text-xs font-semibold text-gray-700">Template-uri aprobate</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Selectează pentru a trimite</p>
+                    </div>
+                    {TEMPLATES.map(t => (
+                      <button
+                        key={t.name}
+                        onClick={() => sendTemplate(t.name, t.language)}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                        <div className="font-medium text-xs">{t.label}</div>
+                        <div className="text-[10px] text-gray-400 font-mono">{t.name} · {t.language}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Banner conversație nouă — niciun mesaj */}
+          {messages.length === 0 && !loadingMsgs && (
+            <div className="bg-blue-50 border-b border-blue-100 px-6 py-2 flex items-center justify-between">
+              <span className="text-xs text-blue-700">Conversație nouă — inițiaz-o cu un template aprobat.</span>
+              <div className="relative" ref={templateRef}>
+                <button
+                  onClick={() => setShowTemplates(v => !v)}
+                  disabled={sendingTemplate}
+                  className="flex items-center gap-1.5 text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+                  <Zap size={12} />
+                  {sendingTemplate ? 'Se trimite...' : 'Trimite template'}
+                </button>
+                {showTemplates && (
+                  <div className="absolute right-0 top-9 bg-white border border-gray-200 rounded-xl shadow-lg z-50 w-64 overflow-hidden">
+                    <div className="px-4 py-2.5 border-b border-gray-100">
+                      <p className="text-xs font-semibold text-gray-700">Template-uri aprobate</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Selectează pentru a trimite</p>
+                    </div>
+                    {TEMPLATES.map(t => (
+                      <button
+                        key={t.name}
+                        onClick={() => sendTemplate(t.name, t.language)}
+                        className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                        <div className="font-medium text-xs">{t.label}</div>
+                        <div className="text-[10px] text-gray-400 font-mono">{t.name} · {t.language}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Mesaje */}
           <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-[#f0f2f5]">
             {loadingMsgs ? (
@@ -389,11 +524,17 @@ export default function WhatsAppPage() {
             ) : (
               messages.map(msg => {
                 const isOut = msg.direction === 'outbound'
+                const isTemplate = msg.message_type === 'template'
                 return (
                   <div key={msg.id} className={`flex ${isOut ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-xs lg:max-w-md xl:max-w-lg rounded-2xl px-4 py-2.5 shadow-sm ${
                       isOut ? 'bg-[#004437] text-white rounded-br-sm' : 'bg-white text-gray-900 rounded-bl-sm'
                     }`}>
+                      {isTemplate && (
+                        <div className={`text-[10px] mb-1 flex items-center gap-1 ${isOut ? 'text-white/50' : 'text-gray-400'}`}>
+                          <Zap size={9} /> Template
+                        </div>
+                      )}
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body}</p>
                       <div className={`flex items-center gap-1 mt-1 ${isOut ? 'justify-end' : 'justify-start'}`}>
                         <span className={`text-[10px] ${isOut ? 'text-white/60' : 'text-gray-400'}`}>
@@ -416,10 +557,15 @@ export default function WhatsAppPage() {
           {/* Input trimitere */}
           <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-end gap-3">
             <textarea
-              className="flex-1 resize-none border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-[#004437] transition-colors max-h-32 min-h-[44px]"
-              placeholder="Scrie un mesaj..."
+              className={`flex-1 resize-none border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors max-h-32 min-h-[44px] ${
+                !windowOpen && messages.length > 0
+                  ? 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
+                  : 'border-gray-200 focus:border-[#004437]'
+              }`}
+              placeholder={!windowOpen && messages.length > 0 ? 'Fereastra închisă — folosește un template...' : 'Scrie un mesaj...'}
               value={draft}
               onChange={e => setDraft(e.target.value)}
+              disabled={!windowOpen && messages.length > 0}
               onKeyDown={e => {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
               }}
@@ -427,7 +573,7 @@ export default function WhatsAppPage() {
             />
             <button
               onClick={sendMessage}
-              disabled={!draft.trim() || sending}
+              disabled={!draft.trim() || sending || (!windowOpen && messages.length > 0)}
               className="w-11 h-11 bg-[#004437] text-white rounded-xl flex items-center justify-center hover:bg-[#005a47] transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex-shrink-0"
             >
               {sending ? (
