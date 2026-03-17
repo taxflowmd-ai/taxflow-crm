@@ -41,7 +41,13 @@ export async function POST(req: NextRequest) {
 
     if (!conv) return NextResponse.json({ error: 'Conversație negăsită' }, { status: 404 })
 
-    const waPhone = (conv as any).wa_phone
+   const waPhone = (conv as any).wa_phone
+    console.log('META DEBUG:', {
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID,
+    tokenExists: !!process.env.WHATSAPP_ACCESS_TOKEN,
+    tokenPrefix: process.env.WHATSAPP_ACCESS_TOKEN?.substring(0, 10),
+    waPhone,
+    })
 
     const metaRes = await fetch(
       `https://graph.facebook.com/v19.0/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`,
