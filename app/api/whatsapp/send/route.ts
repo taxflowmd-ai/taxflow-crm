@@ -68,6 +68,8 @@ export async function POST(req: NextRequest) {
     )
 
     const metaData = await metaRes.json()
+    console.log('META RESPONSE:', JSON.stringify(metaData))
+    console.log('META STATUS:', metaRes.status)
     if (!metaRes.ok) {
       return NextResponse.json({ error: metaData.error?.message || 'Eroare Meta API' }, { status: 400 })
     }
