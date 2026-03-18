@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { ChevronLeft, ChevronRight, Settings2, X, Plus, Pencil, Trash2, GripVertical, Users } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Settings2, X, Plus, Pencil, Trash2, GripVertical, Users, RefreshCw } from 'lucide-react'
 
 const MONTHS_FULL = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie']
 
@@ -304,6 +304,10 @@ export default function ReportsPage() {
           <button onClick={() => setShowConfig(true)}
             className="flex items-center gap-1.5 text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
             <Settings2 size={13}/> Configurare
+          </button>
+          <button onClick={() => load()} title="Reîncarcă clienți"
+            className="w-8 h-8 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 text-gray-400 hover:text-[#004437] transition-colors">
+            <RefreshCw size={14}/>
           </button>
           <button onClick={prevMonth} className="w-8 h-8 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors">
             <ChevronLeft size={15}/>
