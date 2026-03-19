@@ -35,10 +35,10 @@ const STATUS_COLORS: Record<string, string> = {
 
 // Template-urile aprobate în Meta — actualizează cu numele exacte din Meta Business Suite
 const TEMPLATES = [
-  { name: 'hello_world', label: 'Salut (hello_world)', language: 'en_US' },
+  { name: 'chiaramsrl', label: 'Am SRL', language: 'ro' },
   // Adaugă aici template-urile tale aprobate:
   { name: 'contact', label: 'Bună ziua', language: 'ro' },
-  // { name: 'taxflow_oferta', label: 'Ofertă servicii', language: 'ro' },
+  { name: 'am_srl', label: 'Vreau SRL', language: 'ro' },
 ]
 
 function fmtTime(ts: string) {
