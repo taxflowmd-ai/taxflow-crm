@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { X, Save, Trash2, MessageCircle, Phone, Mail, Building2, User, Tag, Calendar, FileText, Clock, Landmark, Hash, Briefcase } from 'lucide-react'
+import { X, Save, Trash2, MessageCircle, Phone, Mail, Building2, User, Tag, Calendar, FileText, Clock, Landmark, Hash, Briefcase, Pencil } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import BankingTab from '@/components/BankingTab'
 
@@ -31,6 +31,8 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
   const [tab, setTab] = useState<'info'|'note'|'history'|'banking'>('info')
   const [form, setForm] = useState<any>({})
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [editingNoteId, setEditingNoteId] = useState<string|null>(null)
+  const [editingNoteText, setEditingNoteText] = useState('')
 
   useEffect(() => {
     if (!leadId) return
@@ -114,6 +116,31 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
     setNote('')
     loadLead(leadId)
     setTab('history')
+  }
+
+  async function handleEditNote(noteId: string) {
+    if (!editingNoteText.trim()) return
+    const supabase = createClient()
+    const { error } = await (supabase as any)
+      .from('lead_history')
+      .update({ content: editingNoteText.trim(), action: editingNoteText.trim() })
+      .eq('id', noteId)
+    if (error) { toast.error(error.message); return }
+    toast.success('Notă actualizată')
+    setEditingNoteId(null)
+    setEditingNoteText('')
+    if (leadId) loadLead(leadId)
+  }
+
+  async function handleDeleteNote(noteId: string) {
+    const supabase = createClient()
+    const { error } = await (supabase as any)
+      .from('lead_history')
+      .delete()
+      .eq('id', noteId)
+    if (error) { toast.error(error.message); return }
+    toast.success('Notă ștearsă')
+    if (leadId) loadLead(leadId)
   }
 
   async function handleDelete() {
@@ -327,8 +354,10 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                     </div>
                   ) : history.map((h: any) => {
                     const isStatusChange = h.type === 'status_change'
+                    const isNote = h.type === 'note'
+                    const isEditingThis = editingNoteId === h.id
+
                     if (isStatusChange) {
-                      // Extrage statusurile din mesaj: "Status schimbat: X → Y"
                       const parts = (h.content || h.action || '').split(': ')
                       const transition = parts[1] || ''
                       return (
@@ -346,8 +375,9 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                         </div>
                       )
                     }
+
                     return (
-                      <div key={h.id} className="flex gap-3">
+                      <div key={h.id} className="flex gap-3 group/note">
                         <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5"
                           style={{ background: h.author?.avatar_color || '#94a3b8' }}>
                           {h.author?.full_name?.split(' ').map((w: string) => w[0]).join('').substring(0,2) || '?'}
@@ -355,11 +385,55 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                         <div className="flex-1 bg-gray-50 rounded-xl px-3 py-2.5">
                           <div className="flex items-center justify-between mb-1">
                             <span className="text-xs font-medium text-gray-700">{h.author?.full_name || 'Sistem'}</span>
-                            <span className="text-[10px] text-gray-400">
-                              {new Date(h.created_at).toLocaleDateString('ro-RO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
-                            </span>
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-gray-400">
+                                {new Date(h.created_at).toLocaleDateString('ro-RO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+                              </span>
+                              {/* Butoane editare/ștergere — doar admin și doar pentru note */}
+                              {isAdmin && isNote && !isEditingThis && (
+                                <div className="flex items-center gap-0.5 opacity-0 group-hover/note:opacity-100 transition-opacity ml-1">
+                                  <button
+                                    onClick={() => { setEditingNoteId(h.id); setEditingNoteText(h.content || h.action || '') }}
+                                    className="p-1 rounded text-gray-400 hover:text-[#004437] transition-colors"
+                                    title="Editează">
+                                    <Pencil size={11} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteNote(h.id)}
+                                    className="p-1 rounded text-gray-400 hover:text-red-500 transition-colors"
+                                    title="Șterge">
+                                    <Trash2 size={11} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <p className="text-xs text-gray-600 leading-relaxed">{h.content || h.action}</p>
+                          {isEditingThis ? (
+                            <div className="space-y-2">
+                              <textarea
+                                className="input resize-none w-full text-xs"
+                                rows={3}
+                                value={editingNoteText}
+                                onChange={e => setEditingNoteText(e.target.value)}
+                                autoFocus
+                              />
+                              <div className="flex justify-end gap-2">
+                                <button
+                                  onClick={() => { setEditingNoteId(null); setEditingNoteText('') }}
+                                  className="text-xs border border-gray-200 px-2.5 py-1 rounded-lg hover:bg-gray-50">
+                                  Anulează
+                                </button>
+                                <button
+                                  onClick={() => handleEditNote(h.id)}
+                                  disabled={!editingNoteText.trim()}
+                                  className="text-xs bg-[#004437] text-white px-2.5 py-1 rounded-lg hover:bg-[#005a47] disabled:opacity-40">
+                                  Salvează
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-600 leading-relaxed">{h.content || h.action}</p>
+                          )}
                         </div>
                       </div>
                     )
