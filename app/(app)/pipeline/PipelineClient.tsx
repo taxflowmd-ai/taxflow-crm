@@ -6,10 +6,10 @@ import { toast } from 'sonner'
 import { Plus, LayoutGrid, List } from 'lucide-react'
 import LeadDrawer from '@/components/LeadDrawer'
 
-const STATUSES = ['Nou','Contactat','Întâlnire programată','Ofertă trimisă','Client activ','Pierdut']
+const STATUSES = ['Nou','Contactat','Întâlnire programată','Ofertă trimisă','Client activ','Pierdut','Nu se califică']
 const ST_COLORS: Record<string,string> = {
   'Nou':'#94a3b8','Contactat':'#3a7bd5','Întâlnire programată':'#c9a84c',
-  'Ofertă trimisă':'#8b5cf6','Client activ':'#00c48c','Pierdut':'#e05050'
+  'Ofertă trimisă':'#8b5cf6','Client activ':'#00c48c','Pierdut':'#e05050','Nu se califică':'#f97316'
 }
 const SRC_CLS: Record<string,string> = {
   'Meta Ads':'bg-blue-100 text-blue-700','WhatsApp':'bg-green-100 text-green-700',
