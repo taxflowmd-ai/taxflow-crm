@@ -319,29 +319,51 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
               )}
 
               {tab === 'history' && (
-                <div className="p-4 space-y-3">
+                <div className="p-4 space-y-2">
                   {history.length === 0 ? (
                     <div className="text-center py-12 text-gray-400">
                       <Clock size={28} className="mx-auto mb-2 opacity-40" />
                       <p className="text-sm">Niciun istoric</p>
                     </div>
-                  ) : history.map((h: any) => (
-                    <div key={h.id} className="flex gap-3">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5"
-                        style={{ background: h.author?.avatar_color || '#94a3b8' }}>
-                        {h.author?.full_name?.split(' ').map((w: string) => w[0]).join('').substring(0,2) || '?'}
-                      </div>
-                      <div className="flex-1 bg-gray-50 rounded-xl px-3 py-2.5">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-gray-700">{h.author?.full_name || 'Sistem'}</span>
-                          <span className="text-[10px] text-gray-400">
-                            {new Date(h.created_at).toLocaleDateString('ro-RO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
-                          </span>
+                  ) : history.map((h: any) => {
+                    const isStatusChange = h.type === 'status_change'
+                    if (isStatusChange) {
+                      // Extrage statusurile din mesaj: "Status schimbat: X → Y"
+                      const parts = (h.content || h.action || '').split(': ')
+                      const transition = parts[1] || ''
+                      return (
+                        <div key={h.id} className="flex items-center gap-2 py-1">
+                          <div className="w-px h-4 bg-gray-200 ml-3 flex-shrink-0" />
+                          <div className="flex items-center gap-2 flex-1 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5">
+                            <span className="text-[10px] text-blue-500 font-mono font-semibold">{transition}</span>
+                            <span className="flex-1" />
+                            <span className="text-[10px] text-gray-400">{h.author?.full_name || 'Sistem'}</span>
+                            <span className="text-[10px] text-gray-300">·</span>
+                            <span className="text-[10px] text-gray-400">
+                              {new Date(h.created_at).toLocaleDateString('ro-RO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+                            </span>
+                          </div>
                         </div>
-                        <p className="text-xs text-gray-600 leading-relaxed">{h.content || h.action}</p>
+                      )
+                    }
+                    return (
+                      <div key={h.id} className="flex gap-3">
+                        <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0 mt-0.5"
+                          style={{ background: h.author?.avatar_color || '#94a3b8' }}>
+                          {h.author?.full_name?.split(' ').map((w: string) => w[0]).join('').substring(0,2) || '?'}
+                        </div>
+                        <div className="flex-1 bg-gray-50 rounded-xl px-3 py-2.5">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs font-medium text-gray-700">{h.author?.full_name || 'Sistem'}</span>
+                            <span className="text-[10px] text-gray-400">
+                              {new Date(h.created_at).toLocaleDateString('ro-RO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-600 leading-relaxed">{h.content || h.action}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )}
 
