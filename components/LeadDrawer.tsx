@@ -6,12 +6,12 @@ import { X, Save, Trash2, MessageCircle, Phone, Mail, Building2, User, Tag, Cale
 import { useRouter } from 'next/navigation'
 import BankingTab from '@/components/BankingTab'
 
-const STATUSES = ['Nou','Contactat','Întâlnire programată','Ofertă trimisă','Client activ','Pierdut']
+const STATUSES = ['Nou','Contactat','Întâlnire programată','Ofertă trimisă','Client activ','Pierdut','Nu se califică']
 const SOURCES = ['Meta Ads','WhatsApp','Organic','Referință','Site web','Import']
 const FISCAL_REGIMES = ['non-TVA','TVA']
 const ST_COLORS: Record<string,string> = {
   'Nou':'#94a3b8','Contactat':'#3a7bd5','Întâlnire programată':'#c9a84c',
-  'Ofertă trimisă':'#8b5cf6','Client activ':'#00c48c','Pierdut':'#e05050'
+  'Ofertă trimisă':'#8b5cf6','Client activ':'#00c48c','Pierdut':'#e05050','Nu se califică':'#f97316'
 }
 
 interface Props {
