@@ -222,6 +222,10 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                       <input {...f('company')} placeholder="SRL..." />
                     </div>
                     <div>
+                      <label className="label flex items-center gap-1.5"><Hash size={12} />IDNO</label>
+                      <input {...f('idno')} placeholder="1234567890123" maxLength={13} className="input font-mono tracking-wider" />
+                    </div>
+                    <div>
                       <label className="label flex items-center gap-1.5"><Phone size={12} />Telefon</label>
                       <input {...f('phone')} placeholder="+373..." />
                     </div>
@@ -252,16 +256,13 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                     </div>
                   </div>
 
-                  {/* Date fiscale */}
+                  {/* Date fiscale — doar pentru Client activ */}
+                  {form.status === 'Client activ' && (
                   <div className="border-t border-gray-100 pt-4">
                     <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
                       <Briefcase size={11} /> Date fiscale
                     </p>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="col-span-2">
-                        <label className="label flex items-center gap-1.5"><Hash size={12} />IDNO</label>
-                        <input {...f('idno')} placeholder="1234567890123" maxLength={13} className="input font-mono tracking-wider" />
-                      </div>
                       <div>
                         <label className="label">Regim fiscal</label>
                         <select {...f('fiscal_regime')} className="input">
@@ -278,6 +279,7 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                       </div>
                     </div>
                   </div>
+                  )}
 
                   <div>
                     <label className="label flex items-center gap-1.5"><FileText size={12} />Notă generală</label>
