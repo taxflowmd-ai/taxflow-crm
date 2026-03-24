@@ -2,12 +2,13 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { X, Save, Trash2, MessageCircle, Phone, Mail, Building2, User, Tag, Calendar, FileText, Clock, Landmark } from 'lucide-react'
+import { X, Save, Trash2, MessageCircle, Phone, Mail, Building2, User, Tag, Calendar, FileText, Clock, Landmark, Hash, Briefcase } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import BankingTab from '@/components/BankingTab'
 
 const STATUSES = ['Nou','Contactat','Întâlnire programată','Ofertă trimisă','Client activ','Pierdut']
 const SOURCES = ['Meta Ads','WhatsApp','Organic','Referință','Site web','Import']
+const FISCAL_REGIMES = ['non-TVA','TVA']
 const ST_COLORS: Record<string,string> = {
   'Nou':'#94a3b8','Contactat':'#3a7bd5','Întâlnire programată':'#c9a84c',
   'Ofertă trimisă':'#8b5cf6','Client activ':'#00c48c','Pierdut':'#e05050'
@@ -46,13 +47,11 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
       .select('*, assignee:assigned_to(id, full_name, avatar_color)')
       .eq('id', id)
       .single()
-
     const { data: hist } = await (supabase as any)
       .from('lead_history')
       .select('*, author:created_by(full_name, avatar_color)')
       .eq('lead_id', id)
       .order('created_at', { ascending: false })
-
     setLead(data)
     setHistory(hist || [])
     setForm({
@@ -65,6 +64,10 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
       assigned_to: data?.assigned_to || '',
       note: data?.note || '',
       reminder_at: data?.reminder_at ? data.reminder_at.slice(0,16) : '',
+      idno: data?.idno || '',
+      fiscal_regime: data?.fiscal_regime || 'non-TVA',
+      employees_count: data?.employees_count ?? '',
+      contract_value: data?.contract_value ?? '',
     })
     setLoading(false)
   }
@@ -80,6 +83,10 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
           ...form,
           reminder_at: form.reminder_at || null,
           assigned_to: form.assigned_to || null,
+          idno: form.idno || null,
+          fiscal_regime: form.fiscal_regime || null,
+          employees_count: form.employees_count !== '' ? Number(form.employees_count) : null,
+          contract_value: form.contract_value !== '' ? Number(form.contract_value) : null,
         }),
       })
       const json = await res.json()
@@ -99,12 +106,8 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
     const supabase = createClient()
     const { data: { user } } = await supabase.auth.getUser()
     const { error } = await (supabase as any).from('lead_history').insert({
-      lead_id: leadId,
-      type: 'note',
-      action: note.trim(),
-      content: note.trim(),
-      created_by: user?.id,
-      user_id: user?.id,
+      lead_id: leadId, type: 'note', action: note.trim(), content: note.trim(),
+      created_by: user?.id, user_id: user?.id,
     })
     if (error) { toast.error(error.message); return }
     toast.success('Notă adăugată')
@@ -116,34 +119,26 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
   async function handleDelete() {
     if (!leadId) return
     const res = await fetch(`/api/leads/${leadId}`, { method: 'DELETE' })
-    if (res.ok) {
-      toast.success('Contact șters')
-      onClose()
-      router.refresh()
-    } else {
-      toast.error('Eroare la ștergere')
-    }
+    if (res.ok) { toast.success('Contact șters'); onClose(); router.refresh() }
+    else toast.error('Eroare la ștergere')
   }
 
   async function openWhatsApp() {
     if (!lead?.phone) { toast.error('Niciun număr de telefon'); return }
     try {
       const res = await fetch('/api/whatsapp/conversation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId, phone: lead.phone, name: lead.name }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       onClose()
       router.push(`/whatsapp?conv=${json.conversationId}`)
-    } catch (err: any) {
-      toast.error(err.message)
-    }
+    } catch (err: any) { toast.error(err.message) }
   }
 
   const f = (field: string) => ({
-    value: form[field] || '',
+    value: form[field] ?? '',
     onChange: (e: any) => setForm((p: any) => ({ ...p, [field]: e.target.value })),
     className: 'input',
   })
@@ -162,36 +157,28 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
 
   return (
     <>
-      {/* Overlay */}
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
-
-      {/* Drawer */}
       <div className="fixed right-0 top-0 h-full w-[480px] bg-white shadow-2xl z-50 flex flex-col">
 
-        {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
-          {loading ? (
-            <div className="h-5 w-40 bg-gray-200 rounded animate-pulse" />
-          ) : (
+          {loading ? <div className="h-5 w-40 bg-gray-200 rounded animate-pulse" /> : (
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                style={{ background: lead?.assignee?.avatar_color || '#3a7bd5' }}>
-                {ini}
-              </div>
+                style={{ background: lead?.assignee?.avatar_color || '#3a7bd5' }}>{ini}</div>
               <div>
                 <div className="font-semibold text-gray-900 text-sm">{lead?.name}</div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: sc }} />
                   <span className="text-xs" style={{ color: sc }}>{lead?.status}</span>
+                  {lead?.idno && <span className="text-[10px] text-gray-400 font-mono">· {lead.idno}</span>}
                 </div>
               </div>
             </div>
           )}
           <div className="flex items-center gap-2">
             {lead?.phone && (
-              <button onClick={openWhatsApp}
-                className="w-8 h-8 rounded-lg border border-green-200 flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors"
-                title="Deschide în WhatsApp CRM">
+              <button onClick={openWhatsApp} title="Deschide în WhatsApp CRM"
+                className="w-8 h-8 rounded-lg border border-green-200 flex items-center justify-center text-green-600 hover:bg-green-50 transition-colors">
                 <MessageCircle size={15} />
               </button>
             )}
@@ -207,7 +194,6 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
           </div>
         </div>
 
-        {/* Tabs */}
         <div className="px-6 border-b border-gray-200 flex gap-1 flex-shrink-0 overflow-x-auto">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id as any)}
@@ -217,7 +203,6 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
           ))}
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="p-6 space-y-3">
@@ -225,7 +210,6 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
             </div>
           ) : (
             <>
-              {/* Tab: Informații */}
               {tab === 'info' && (
                 <div className="p-6 space-y-4">
                   <div className="grid grid-cols-2 gap-3">
@@ -247,15 +231,11 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                     </div>
                     <div>
                       <label className="label flex items-center gap-1.5"><Tag size={12} />Sursă</label>
-                      <select {...f('source')} className="input">
-                        {SOURCES.map(s => <option key={s}>{s}</option>)}
-                      </select>
+                      <select {...f('source')} className="input">{SOURCES.map(s => <option key={s}>{s}</option>)}</select>
                     </div>
                     <div>
                       <label className="label">Status</label>
-                      <select {...f('status')} className="input">
-                        {STATUSES.map(s => <option key={s}>{s}</option>)}
-                      </select>
+                      <select {...f('status')} className="input">{STATUSES.map(s => <option key={s}>{s}</option>)}</select>
                     </div>
                     {isAdmin && team.length > 0 && (
                       <div>
@@ -271,12 +251,39 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                       <input {...f('reminder_at')} type="datetime-local" className="input" />
                     </div>
                   </div>
+
+                  {/* Date fiscale */}
+                  <div className="border-t border-gray-100 pt-4">
+                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                      <Briefcase size={11} /> Date fiscale
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="col-span-2">
+                        <label className="label flex items-center gap-1.5"><Hash size={12} />IDNO</label>
+                        <input {...f('idno')} placeholder="1234567890123" maxLength={13} className="input font-mono tracking-wider" />
+                      </div>
+                      <div>
+                        <label className="label">Regim fiscal</label>
+                        <select {...f('fiscal_regime')} className="input">
+                          {FISCAL_REGIMES.map(r => <option key={r}>{r}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="label flex items-center gap-1.5"><User size={12} />Nr. angajați</label>
+                        <input {...f('employees_count')} type="number" min="0" placeholder="0" className="input" />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="label flex items-center gap-1.5"><Landmark size={12} />Valoare contract lunar (MDL)</label>
+                        <input {...f('contract_value')} type="number" min="0" placeholder="0" className="input" />
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="label flex items-center gap-1.5"><FileText size={12} />Notă generală</label>
                     <textarea {...f('note')} className="input resize-none" rows={3} placeholder="Context, servicii dorite..." />
                   </div>
 
-                  {/* Acțiuni */}
                   <div className="flex items-center justify-between pt-2 border-t border-gray-100">
                     {!confirmDelete ? (
                       <button onClick={() => setConfirmDelete(true)}
@@ -290,36 +297,25 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                         <button onClick={() => setConfirmDelete(false)} className="text-xs border border-gray-200 px-3 py-1 rounded-lg hover:bg-gray-50">Anulează</button>
                       </div>
                     )}
-                    <button onClick={handleSave} disabled={saving}
-                      className="btn-primary flex items-center gap-1.5 text-sm">
-                      <Save size={14} />
-                      {saving ? 'Se salvează...' : 'Salvează'}
+                    <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-1.5 text-sm">
+                      <Save size={14} />{saving ? 'Se salvează...' : 'Salvează'}
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Tab: Adaugă notă */}
               {tab === 'note' && (
                 <div className="p-6">
                   <label className="label">Notă nouă</label>
-                  <textarea
-                    className="input resize-none w-full"
-                    rows={5}
+                  <textarea className="input resize-none w-full" rows={5}
                     placeholder="Scrie ce s-a discutat, ce urmează..."
-                    value={note}
-                    onChange={e => setNote(e.target.value)}
-                    autoFocus
-                  />
+                    value={note} onChange={e => setNote(e.target.value)} autoFocus />
                   <div className="flex justify-end mt-3">
-                    <button onClick={handleAddNote} disabled={!note.trim()} className="btn-primary">
-                      Adaugă notă
-                    </button>
+                    <button onClick={handleAddNote} disabled={!note.trim()} className="btn-primary">Adaugă notă</button>
                   </div>
                 </div>
               )}
 
-              {/* Tab: Istoric */}
               {tab === 'history' && (
                 <div className="p-4 space-y-3">
                   {history.length === 0 ? (
@@ -347,7 +343,6 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                 </div>
               )}
 
-              {/* Tab: Banking */}
               {tab === 'banking' && leadId && (
                 <BankingTab leadId={leadId} isAdmin={isAdmin} />
               )}
