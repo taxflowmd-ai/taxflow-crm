@@ -3,12 +3,17 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Plus, Search, MessageCircle } from 'lucide-react'
+import { Plus, Search, MessageCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import LeadDrawer from '@/components/LeadDrawer'
+
+const STATUSES_ACTIVE = ['Nou','Contactat','Întâlnire programată','Ofertă trimisă','Client activ']
+const STATUSES_INACTIVE = ['Pierdut','Nu se califică']
+const ALL_STATUSES = [...STATUSES_ACTIVE, ...STATUSES_INACTIVE]
 
 const ST_COLORS: Record<string,string> = {
   'Nou':'#94a3b8','Contactat':'#3a7bd5','Întâlnire programată':'#c9a84c',
-  'Ofertă trimisă':'#8b5cf6','Client activ':'#00c48c','Pierdut':'#e05050'
+  'Ofertă trimisă':'#8b5cf6','Client activ':'#00c48c',
+  'Pierdut':'#e05050','Nu se califică':'#f97316'
 }
 const SRC_CLS: Record<string,string> = {
   'Meta Ads':'bg-blue-100 text-blue-700','WhatsApp':'bg-green-100 text-green-700',
@@ -29,6 +34,7 @@ export default function ContactsPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [form, setForm] = useState({name:'',company:'',phone:'',email:'',source:'Meta Ads',assigned_to:'',note:''})
   const [selectedLeadId, setSelectedLeadId] = useState<string|null>(null)
+  const [inactiveExpanded, setInactiveExpanded] = useState(false)
 
   async function loadData() {
     const supabase = createClient()
@@ -58,16 +64,13 @@ export default function ContactsPage() {
     e.stopPropagation()
     try {
       const res = await fetch('/api/whatsapp/conversation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId, phone, name }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
       router.push(`/whatsapp?conv=${json.conversationId}`)
-    } catch (err: any) {
-      toast.error(err.message)
-    }
+    } catch (err: any) { toast.error(err.message) }
   }
 
   async function handleAdd(e:React.FormEvent){
@@ -75,15 +78,9 @@ export default function ContactsPage() {
     const supabase=createClient()
     const {data:{user}}=await supabase.auth.getUser()
     const payload: any = {
-      name: form.name,
-      company: form.company||null,
-      phone: form.phone||null,
-      email: form.email||null,
-      source: form.source,
-      note: form.note||null,
-      status: 'Nou',
-      assigned_to: form.assigned_to||user?.id,
-      created_by: user?.id,
+      name: form.name, company: form.company||null, phone: form.phone||null,
+      email: form.email||null, source: form.source, note: form.note||null,
+      status: 'Nou', assigned_to: form.assigned_to||user?.id, created_by: user?.id,
     }
     const {error}=await (supabase as any).from('leads').insert(payload as any)
     if(error){toast.error(error.message);return}
@@ -95,70 +92,155 @@ export default function ContactsPage() {
 
   const inp=(field:string,rest?:any)=>({value:(form as any)[field],onChange:(e:any)=>setForm(f=>({...f,[field]:e.target.value})),className:'input',...rest})
 
+  // Împarte lista în active și inactive
+  const activeLeads = filtered.filter(l => !STATUSES_INACTIVE.includes(l.status))
+  const inactiveLeads = filtered.filter(l => STATUSES_INACTIVE.includes(l.status))
+  const showInactiveGroup = inactiveLeads.length > 0 && !stFilter
+
+  function LeadRow({ l }: { l: any }) {
+    const ini = l.name.split(' ').map((w:string)=>w[0]).join('').substring(0,2).toUpperCase()
+    const uc = l.assignee?.avatar_color||'#3a7bd5'
+    const sc = ST_COLORS[l.status]||'#94a3b8'
+    return (
+      <tr className="hover:bg-gray-50 cursor-pointer" onClick={()=>setSelectedLeadId(l.id)}>
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{background:uc}}>{ini}</div>
+            <div>
+              <div className="text-sm font-medium text-gray-900">{l.name}</div>
+              <div className="text-xs text-gray-400">{l.company||'—'}</div>
+            </div>
+          </div>
+        </td>
+        <td className="px-4 py-3"><a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} className="text-sm text-[#004437] hover:underline">{l.phone||'—'}</a></td>
+        <td className="px-4 py-3 text-sm text-gray-500">{l.email||'—'}</td>
+        <td className="px-4 py-3"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span></td>
+        <td className="px-4 py-3">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{background:sc+'22',color:sc}}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{background:sc}}/>{l.status}
+          </span>
+        </td>
+        <td className="px-4 py-3">{l.assignee&&<div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:l.assignee.avatar_color}} title={l.assignee.full_name}>{l.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}</div>}</td>
+        <td className="px-4 py-3">
+          {l.phone&&(
+            <button onClick={(e)=>openWhatsApp(e,l.id,l.phone,l.name)}
+              className="p-1.5 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-colors inline-flex"
+              title="Deschide în WhatsApp CRM">
+              <MessageCircle size={13}/>
+            </button>
+          )}
+        </td>
+      </tr>
+    )
+  }
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
-        <div><h1 className="text-base font-semibold">Contacte</h1><p className="text-xs text-gray-400">{filtered.length} din {leads.length}</p></div>
+        <div>
+          <h1 className="text-base font-semibold">Contacte</h1>
+          <p className="text-xs text-gray-400">{filtered.length} din {leads.length}</p>
+        </div>
         <button onClick={()=>setShowModal(true)} className="btn-primary"><Plus size={15}/>Contact nou</button>
       </div>
+
       <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-3 flex-shrink-0">
         <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 w-64">
           <Search size={14} className="text-gray-400"/>
           <input className="bg-transparent text-sm outline-none flex-1 placeholder:text-gray-400" placeholder="Caută..." value={q} onChange={e=>setQ(e.target.value)}/>
         </div>
-        <select className="input w-44 py-1.5" value={stFilter} onChange={e=>setStFilter(e.target.value)}>
+        <select className="input w-48 py-1.5" value={stFilter} onChange={e=>setStFilter(e.target.value)}>
           <option value="">Toate statusurile</option>
-          {['Nou','Contactat','Întâlnire programată','Ofertă trimisă','Client activ','Pierdut'].map(s=><option key={s}>{s}</option>)}
+          {ALL_STATUSES.map(s=><option key={s}>{s}</option>)}
         </select>
         <select className="input w-36 py-1.5" value={srcFilter} onChange={e=>setSrcFilter(e.target.value)}>
           <option value="">Toate sursele</option>
           {['Meta Ads','WhatsApp','Organic','Referință','Site web','Import'].map(s=><option key={s}>{s}</option>)}
         </select>
       </div>
+
       <div className="flex-1 overflow-auto">
-        {loading ? <div className="flex items-center justify-center h-40 text-gray-400 text-sm">Se încarcă...</div> : (
+        {loading ? (
+          <div className="flex items-center justify-center h-40 text-gray-400 text-sm">Se încarcă...</div>
+        ) : (
           <table className="w-full">
-            <thead className="bg-gray-50 sticky top-0">
+            <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>{['Contact','Telefon','Email','Sursă','Status','Responsabil','Acțiuni'].map(h=>(
                 <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200">{h}</th>
               ))}</tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map((l:any)=>{
-                const ini=l.name.split(' ').map((w:string)=>w[0]).join('').substring(0,2).toUpperCase()
-                const uc=l.assignee?.avatar_color||'#3a7bd5'
-                const sc=ST_COLORS[l.status]||'#94a3b8'
-                return (
-                  <tr key={l.id} className="hover:bg-gray-50 cursor-pointer" onClick={()=>setSelectedLeadId(l.id)}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0" style={{background:uc}}>{ini}</div>
-                        <div><div className="text-sm font-medium text-gray-900">{l.name}</div><div className="text-xs text-gray-400">{l.company||'—'}</div></div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3"><a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} className="text-sm text-[#004437] hover:underline">{l.phone||'—'}</a></td>
-                    <td className="px-4 py-3 text-sm text-gray-500">{l.email||'—'}</td>
-                    <td className="px-4 py-3"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span></td>
-                    <td className="px-4 py-3"><span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{background:sc+'22',color:sc}}><span className="w-1.5 h-1.5 rounded-full" style={{background:sc}}/>{l.status}</span></td>
-                    <td className="px-4 py-3">{l.assignee&&<div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:l.assignee.avatar_color}} title={l.assignee.full_name}>{l.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}</div>}</td>
-                    <td className="px-4 py-3">
-                      {l.phone&&(
-                        <button
-                          onClick={(e) => openWhatsApp(e, l.id, l.phone, l.name)}
-                          className="p-1.5 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-colors inline-flex"
-                          title="Deschide în WhatsApp CRM">
-                          <MessageCircle size={13}/>
-                        </button>
-                      )}
+
+              {/* Contacte active */}
+              {activeLeads.map(l => <LeadRow key={l.id} l={l} />)}
+
+              {/* Separator + grup colapsabil Pierdut / Nu se califică */}
+              {showInactiveGroup && (
+                <>
+                  <tr>
+                    <td colSpan={7} className="px-4 py-0">
+                      <button
+                        onClick={() => setInactiveExpanded(v => !v)}
+                        className="w-full flex items-center gap-2 py-2.5 text-xs font-semibold text-gray-400 hover:text-gray-600 transition-colors select-none">
+                        {inactiveExpanded
+                          ? <ChevronDown size={14} className="text-gray-400" />
+                          : <ChevronRight size={14} className="text-gray-400" />}
+                        <span>Pierdut / Nu se califică</span>
+                        <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[11px] font-medium">
+                          {inactiveLeads.length}
+                        </span>
+                        <span className="flex-1 h-px bg-gray-100 ml-2" />
+                      </button>
                     </td>
                   </tr>
-                )
-              })}
+                  {inactiveExpanded && inactiveLeads.map(l => (
+                    <tr key={l.id} className="hover:bg-gray-50 cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
+                      onClick={()=>setSelectedLeadId(l.id)}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                            style={{background: l.assignee?.avatar_color||'#94a3b8'}}>
+                            {l.name.split(' ').map((w:string)=>w[0]).join('').substring(0,2).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-gray-700">{l.name}</div>
+                            <div className="text-xs text-gray-400">{l.company||'—'}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3"><a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} className="text-sm text-gray-400 hover:underline">{l.phone||'—'}</a></td>
+                      <td className="px-4 py-3 text-sm text-gray-400">{l.email||'—'}</td>
+                      <td className="px-4 py-3"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span></td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
+                          style={{background:(ST_COLORS[l.status]||'#94a3b8')+'22', color: ST_COLORS[l.status]||'#94a3b8'}}>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{background: ST_COLORS[l.status]||'#94a3b8'}}/>
+                          {l.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">{l.assignee&&<div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:l.assignee.avatar_color}} title={l.assignee.full_name}>{l.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}</div>}</td>
+                      <td className="px-4 py-3">
+                        {l.phone&&<button onClick={(e)=>openWhatsApp(e,l.id,l.phone,l.name)}
+                          className="p-1.5 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-colors inline-flex">
+                          <MessageCircle size={13}/>
+                        </button>}
+                      </td>
+                    </tr>
+                  ))}
+                </>
+              )}
+
+              {/* Când e filtru activ pe status inactiv — afișează normal */}
+              {stFilter && STATUSES_INACTIVE.includes(stFilter) && filtered.map(l => <LeadRow key={l.id} l={l} />)}
+
             </tbody>
           </table>
         )}
-        {!loading&&filtered.length===0&&<div className="text-center py-16 text-gray-400"><div className="text-3xl mb-2">🔍</div><p className="text-sm">Niciun contact găsit</p></div>}
+        {!loading&&filtered.length===0&&(
+          <div className="text-center py-16 text-gray-400"><div className="text-3xl mb-2">🔍</div><p className="text-sm">Niciun contact găsit</p></div>
+        )}
       </div>
+
       <LeadDrawer leadId={selectedLeadId} onClose={()=>{setSelectedLeadId(null);loadData()}} team={team} isAdmin={isAdmin} />
 
       {showModal&&(
