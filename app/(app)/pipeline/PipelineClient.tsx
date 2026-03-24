@@ -57,11 +57,20 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
     return 0
   })
 
-  async function handleDrop(status:string, leadId:string) {
-    const supabase = createClient()
-    await (supabase as any).from('leads').update({status} as any).eq('id', leadId)
-    toast.success('→ '+status)
-    router.refresh()
+  // Prin API route — înregistrează și în istoric
+  async function handleDrop(status: string, leadId: string) {
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      })
+      if (!res.ok) throw new Error()
+      toast.success('→ ' + status)
+      router.refresh()
+    } catch {
+      toast.error('Eroare la actualizare status')
+    }
   }
 
   async function openWhatsApp(e: React.MouseEvent, leadId: string, phone: string, name: string) {
@@ -104,15 +113,12 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-base font-semibold">Pipeline</h1>
           <p className="text-xs text-gray-400">{leads.length} lead-uri</p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Toggle Kanban / Listă */}
           <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
             <button onClick={() => toggleView('kanban')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium transition-colors ${view === 'kanban' ? 'bg-[#004437] text-white' : 'text-gray-500 hover:bg-gray-50'}`}>
@@ -127,7 +133,6 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
         </div>
       </div>
 
-      {/* Filtru responsabil */}
       {isAdmin && (
         <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-2 flex-shrink-0">
           <span className="text-xs text-gray-500 font-medium">Responsabil:</span>
@@ -140,7 +145,6 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
         </div>
       )}
 
-      {/* ── KANBAN ── */}
       {view === 'kanban' && (
         <div className="flex-1 overflow-x-auto p-6">
           <div className="flex gap-4 h-full min-w-max items-start">
@@ -191,7 +195,6 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
         </div>
       )}
 
-      {/* ── LISTĂ ── */}
       {view === 'list' && (
         <div className="flex-1 overflow-auto">
           <table className="w-full">
@@ -207,8 +210,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                   { label: 'Adăugat', field: 'created_at' },
                   { label: '', field: null },
                 ].map((col, i) => (
-                  <th key={i}
-                    onClick={() => col.field && toggleSort(col.field as any)}
+                  <th key={i} onClick={() => col.field && toggleSort(col.field as any)}
                     className={`px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200 whitespace-nowrap ${col.field ? 'cursor-pointer hover:text-gray-700 select-none' : ''}`}>
                     {col.label}{col.field && <SortIcon field={col.field} />}
                   </th>
@@ -235,17 +237,11 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
                         style={{background: sc+'22', color: sc}}>
-                        <span className="w-1.5 h-1.5 rounded-full" style={{background: sc}}/>
-                        {l.status}
+                        <span className="w-1.5 h-1.5 rounded-full" style={{background: sc}}/>{l.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()}
-                        className="text-sm text-[#004437] hover:underline">{l.phone||'—'}</a>
-                    </td>
+                    <td className="px-4 py-3"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span></td>
+                    <td className="px-4 py-3"><a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} className="text-sm text-[#004437] hover:underline">{l.phone||'—'}</a></td>
                     <td className="px-4 py-3">
                       {l.reminder_at ? (
                         <span className={`text-xs px-2 py-0.5 rounded-full ${reminderExpired ? 'bg-red-50 text-red-600 font-medium' : 'bg-amber-50 text-amber-700'}`}>
@@ -270,9 +266,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                     <td className="px-4 py-3">
                       {l.phone && (
                         <button onClick={(e)=>openWhatsApp(e,l.id,l.phone,l.name)}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-all">
-                          💬
-                        </button>
+                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-all">💬</button>
                       )}
                     </td>
                   </tr>
