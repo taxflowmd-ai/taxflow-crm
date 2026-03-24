@@ -23,8 +23,37 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!user) return NextResponse.json({ error: 'Neautentificat' }, { status: 401 })
 
   const body = await req.json()
-  const { data, error } = await admin().from('leads').update(body).eq('id', params.id).select().single()
+  const db = admin()
+
+  // Citește statusul curent înainte de update
+  const { data: current } = await db
+    .from('leads')
+    .select('status')
+    .eq('id', params.id)
+    .single()
+
+  // Execută update-ul
+  const { data, error } = await db
+    .from('leads')
+    .update(body)
+    .eq('id', params.id)
+    .select()
+    .single()
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Dacă statusul s-a schimbat — înregistrează în istoric
+  if (body.status && current?.status && body.status !== current.status) {
+    await db.from('lead_history').insert({
+      lead_id: params.id,
+      type: 'status_change',
+      action: `Status schimbat: ${current.status} → ${body.status}`,
+      content: `Status schimbat: ${current.status} → ${body.status}`,
+      created_by: user.id,
+      user_id: user.id,
+    })
+  }
+
   return NextResponse.json({ data })
 }
 
