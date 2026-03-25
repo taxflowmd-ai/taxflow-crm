@@ -9,6 +9,7 @@ import BankingTab from '@/components/BankingTab'
 const STATUSES = ['Nou','Contactat','Întâlnire programată','Ofertă trimisă','Client activ','Pierdut','Nu se califică']
 const SOURCES = ['Meta Ads','WhatsApp','Organic','Referință','Site web','Import']
 const FISCAL_REGIMES = ['non-TVA','TVA']
+const SERVICE_TYPES = ['Contabilitate lunară','Înregistrare SRL','Consultanță fiscală','Salarizare','Audit','Altele']
 const ST_COLORS: Record<string,string> = {
   'Nou':'#94a3b8','Contactat':'#3a7bd5','Întâlnire programată':'#c9a84c',
   'Ofertă trimisă':'#8b5cf6','Client activ':'#00c48c','Pierdut':'#e05050','Nu se califică':'#f97316'
@@ -70,6 +71,7 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
       fiscal_regime: data?.fiscal_regime || 'non-TVA',
       employees_count: data?.employees_count ?? '',
       contract_value: data?.contract_value ?? '',
+      service_type: data?.service_type || '',
     })
     setLoading(false)
   }
@@ -89,6 +91,7 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
           fiscal_regime: form.fiscal_regime || null,
           employees_count: form.employees_count !== '' ? Number(form.employees_count) : null,
           contract_value: form.contract_value !== '' ? Number(form.contract_value) : null,
+          service_type: form.service_type || null,
         }),
       })
       const json = await res.json()
@@ -263,6 +266,13 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                     <div>
                       <label className="label flex items-center gap-1.5"><Tag size={12} />Sursă</label>
                       <select {...f('source')} className="input">{SOURCES.map(s => <option key={s}>{s}</option>)}</select>
+                    </div>
+                    <div>
+                      <label className="label">Serviciu solicitat</label>
+                      <select {...f('service_type')} className="input">
+                        <option value="">— selectează —</option>
+                        {SERVICE_TYPES.map(s => <option key={s}>{s}</option>)}
+                      </select>
                     </div>
                     <div>
                       <label className="label">Status</label>
