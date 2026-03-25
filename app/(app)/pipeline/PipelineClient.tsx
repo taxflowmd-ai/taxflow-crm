@@ -214,8 +214,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
               <tr>
                 {[
                   { label: 'Contact', field: 'name' },
-                  { label: 'Status', field: 'status' },
-                  { label: 'Sursă', field: null },
+                  { label: 'Serviciu', field: null },
                   { label: 'Telefon', field: null },
                   { label: 'Reminder', field: null },
                   { label: 'Responsabil', field: 'assigned_to' },
@@ -230,62 +229,95 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {sorted.map((l:any) => {
-                const ini = l.name.split(' ').map((w:string)=>w[0]).join('').substring(0,2).toUpperCase()
-                const sc = ST_COLORS[l.status] || '#94a3b8'
-                const reminderExpired = l.reminder_at && new Date(l.reminder_at) < new Date()
+              {STATUSES.map(st => {
+                const groupLeads = sorted.filter(l => l.status === st)
+                if (groupLeads.length === 0) return null
+                const sc = ST_COLORS[st] || '#94a3b8'
                 return (
-                  <tr key={l.id} className="hover:bg-gray-50 cursor-pointer group" onClick={()=>setSelectedLeadId(l.id)}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                          style={{background: l.assignee?.avatar_color || '#3a7bd5'}}>{ini}</div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{l.name}</div>
-                          <div className="text-xs text-gray-400">{l.company||'—'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
-                        style={{background: sc+'22', color: sc}}>
-                        <span className="w-1.5 h-1.5 rounded-full" style={{background: sc}}/>{l.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span></td>
-                    <td className="px-4 py-3"><a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} className="text-sm text-[#004437] hover:underline">{l.phone||'—'}</a></td>
-                    <td className="px-4 py-3">
-                      {l.reminder_at ? (
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${reminderExpired ? 'bg-red-50 text-red-600 font-medium' : 'bg-amber-50 text-amber-700'}`}>
-                          🔔 {new Date(l.reminder_at).toLocaleDateString('ro-RO',{day:'2-digit',month:'short'})}
-                        </span>
-                      ) : <span className="text-xs text-gray-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      {l.assignee && (
+                  <>
+                    {/* Header grup status */}
+                    <tr key={`group-${st}`}>
+                      <td colSpan={7} className="px-4 py-2 bg-gray-50 border-b border-gray-100">
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0"
-                            style={{background: l.assignee.avatar_color}}>
-                            {l.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}
-                          </div>
-                          <span className="text-xs text-gray-600 hidden xl:block">{l.assignee.full_name}</span>
+                          <span className="w-2 h-2 rounded-full flex-shrink-0" style={{background: sc}} />
+                          <span className="text-xs font-semibold text-gray-600">{st}</span>
+                          <span className="text-xs text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded-full">{groupLeads.length}</span>
                         </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
-                      {new Date(l.created_at).toLocaleDateString('ro-RO',{day:'2-digit',month:'short',year:'2-digit'})}
-                    </td>
-                    <td className="px-4 py-3">
-                      {l.phone && (
-                        <button onClick={(e)=>openWhatsApp(e,l.id,l.phone,l.name)}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-all">💬</button>
-                      )}
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                    {/* Rânduri leads din grup */}
+                    {groupLeads.map((l: any) => {
+                      const ini = l.name.split(' ').map((w:string)=>w[0]).join('').substring(0,2).toUpperCase()
+                      const reminderExpired = l.reminder_at && new Date(l.reminder_at) < new Date()
+                      const noteText = l.latest_note ? (l.latest_note.content || l.latest_note.action || '') : ''
+                      return (
+                        <tr key={l.id} className="hover:bg-gray-50 cursor-pointer group" onClick={()=>setSelectedLeadId(l.id)}>
+                          {/* Contact + notă */}
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                                style={{background: l.assignee?.avatar_color || '#3a7bd5'}}>{ini}</div>
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{l.name}</div>
+                                {l.company && <div className="text-xs text-gray-400">{l.company}</div>}
+                                {noteText && (
+                                  <div className="text-[11px] text-gray-400 italic mt-0.5 max-w-[200px] truncate">
+                                    "{noteText.substring(0, 50)}{noteText.length > 50 ? '...' : ''}"
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          {/* Serviciu */}
+                          <td className="px-4 py-3">
+                            {l.service_type
+                              ? <span className="text-xs bg-[#004437]/10 text-[#004437] px-2 py-0.5 rounded-full font-medium whitespace-nowrap">{l.service_type}</span>
+                              : <span className="text-xs text-gray-300">—</span>}
+                          </td>
+                          {/* Telefon */}
+                          <td className="px-4 py-3">
+                            <a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()}
+                              className="text-sm text-[#004437] hover:underline">{l.phone||'—'}</a>
+                          </td>
+                          {/* Reminder */}
+                          <td className="px-4 py-3">
+                            {l.reminder_at ? (
+                              <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${reminderExpired ? 'bg-red-50 text-red-600 font-medium' : 'bg-amber-50 text-amber-700'}`}>
+                                🔔 {new Date(l.reminder_at).toLocaleDateString('ro-RO',{day:'2-digit',month:'short'})}
+                              </span>
+                            ) : <span className="text-xs text-gray-300">—</span>}
+                          </td>
+                          {/* Responsabil */}
+                          <td className="px-4 py-3">
+                            {l.assignee && (
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0"
+                                  style={{background: l.assignee.avatar_color}}>
+                                  {l.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}
+                                </div>
+                                <span className="text-xs text-gray-600 hidden xl:block">{l.assignee.full_name}</span>
+                              </div>
+                            )}
+                          </td>
+                          {/* Data */}
+                          <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
+                            {new Date(l.created_at).toLocaleDateString('ro-RO',{day:'2-digit',month:'short',year:'2-digit'})}
+                          </td>
+                          {/* Acțiuni */}
+                          <td className="px-4 py-3">
+                            {l.phone && (
+                              <button onClick={(e)=>openWhatsApp(e,l.id,l.phone,l.name)}
+                                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-all">💬</button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </>
                 )
               })}
               {sorted.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-16 text-gray-400 text-sm">Niciun lead</td></tr>
+                <tr><td colSpan={7} className="text-center py-16 text-gray-400 text-sm">Niciun lead</td></tr>
               )}
             </tbody>
           </table>
