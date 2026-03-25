@@ -17,12 +17,34 @@ export default async function PipelinePage() {
     .select('*, assignee:assigned_to(id, full_name, avatar_color)')
     .order('created_at', { ascending: false })
 
+  // Ultima notă per lead din view
+  const { data: latestNotes } = await supabase
+    .from('lead_latest_note')
+    .select('lead_id, content, action, created_at')
+
   const { data: teamData } = profile?.role === 'admin'
     ? await supabase.from('profiles').select('id, full_name, avatar_color').eq('is_active', true)
     : { data: [] }
 
-  const leads = (leadsData || []) as any[]
+  // Atașează ultima notă la fiecare lead
+  const notesMap: Record<string, any> = {}
+  for (const n of (latestNotes || [])) {
+    notesMap[(n as any).lead_id] = n
+  }
+
+  const leads = ((leadsData || []) as any[]).map(l => ({
+    ...l,
+    latest_note: notesMap[l.id] || null,
+  }))
+
   const team = (teamData || []) as any[]
 
-  return <PipelineClient leads={leads} team={team} isAdmin={profile?.role === 'admin'} currentUserId={user.id} />
+  return (
+    <PipelineClient
+      leads={leads}
+      team={team}
+      isAdmin={profile?.role === 'admin'}
+      currentUserId={user.id}
+    />
+  )
 }
