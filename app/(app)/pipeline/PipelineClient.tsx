@@ -16,6 +16,7 @@ const SRC_CLS: Record<string,string> = {
   'Organic':'bg-emerald-100 text-emerald-700','Referință':'bg-purple-100 text-purple-700',
   'Site web':'bg-sky-100 text-sky-700','Import':'bg-gray-100 text-gray-600'
 }
+const SERVICE_TYPES = ['Contabilitate lunară','Înregistrare SRL','Consultanță fiscală','Salarizare','Audit','Altele']
 
 interface Props { leads:any[]; team:any[]; isAdmin:boolean; currentUserId:string }
 
@@ -33,7 +34,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
   const [selectedLeadId, setSelectedLeadId] = useState<string|null>(null)
   const [sortField, setSortField] = useState<'name'|'status'|'created_at'|'assigned_to'>('created_at')
   const [sortDir, setSortDir] = useState<'asc'|'desc'>('desc')
-  const [form, setForm] = useState({name:'',company:'',phone:'',email:'',source:'Meta Ads',status:'Nou',assigned_to:'',note:'',reminder_at:''})
+  const [form, setForm] = useState({name:'',company:'',phone:'',email:'',source:'Meta Ads',status:'Nou',assigned_to:'',note:'',reminder_at:'',service_type:''})
 
   const filtered = leads.filter(l => filter==='all' || l.assignee?.id===filter)
 
@@ -94,13 +95,14 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
       name: form.name, company: form.company||null, phone: form.phone||null,
       email: form.email||null, source: form.source, status: form.status,
       note: form.note||null, reminder_at: form.reminder_at||null,
+      service_type: form.service_type||null,
       assigned_to: form.assigned_to||user?.id, created_by: user?.id,
     }
     const {error} = await (supabase as any).from('leads').insert(payload as any)
     if(error){toast.error(error.message);return}
     toast.success('Lead adăugat: '+form.name)
     setShowModal(false)
-    setForm({name:'',company:'',phone:'',email:'',source:'Meta Ads',status:'Nou',assigned_to:'',note:'',reminder_at:''})
+    setForm({name:'',company:'',phone:'',email:'',source:'Meta Ads',status:'Nou',assigned_to:'',note:'',reminder_at:'',service_type:''})
     router.refresh()
   }
 
@@ -169,7 +171,17 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                         onClick={()=>{if(!dragId)setSelectedLeadId(l.id)}}>
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span>
                         <div className="text-sm font-semibold text-gray-900 mt-1.5 mb-0.5">{l.name}</div>
-                        <div className="text-xs text-gray-500 mb-2">{l.company||'—'}</div>
+                        <div className="text-xs text-gray-500 mb-1">{l.company||'—'}</div>
+                        {l.service_type && (
+                          <div className="text-[10px] bg-[#004437]/8 text-[#004437] px-2 py-0.5 rounded-full inline-block mb-1.5 font-medium">
+                            {l.service_type}
+                          </div>
+                        )}
+                        {l.latest_note && (
+                          <div className="text-[10px] text-gray-400 italic mb-1.5 line-clamp-1 leading-relaxed">
+                            "{(l.latest_note.content || l.latest_note.action || '').substring(0, 40)}{(l.latest_note.content || l.latest_note.action || '').length > 40 ? '...' : ''}"
+                          </div>
+                        )}
                         {l.reminder_at&&<div className="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full inline-block mb-2">🔔 {new Date(l.reminder_at).toLocaleDateString('ro-RO',{day:'2-digit',month:'short'})}</div>}
                         <div className="flex items-center justify-between">
                           <span className="text-[10px] text-gray-400">{new Date(l.created_at).toLocaleDateString('ro-RO',{day:'2-digit',month:'short'})}</span>
@@ -297,6 +309,12 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                 <div><label className="label">Email</label><input {...inp('email')} type="email"/></div>
                 <div><label className="label">Sursă</label>
                   <select {...inp('source')} className="input">{['Meta Ads','WhatsApp','Organic','Referință','Site web'].map(s=><option key={s}>{s}</option>)}</select>
+                </div>
+                <div><label className="label">Serviciu solicitat</label>
+                  <select {...inp('service_type')} className="input">
+                    <option value="">— selectează —</option>
+                    {SERVICE_TYPES.map(s=><option key={s}>{s}</option>)}
+                  </select>
                 </div>
                 <div><label className="label">Status</label>
                   <select {...inp('status')} className="input">{STATUSES.map(s=><option key={s}>{s}</option>)}</select>
