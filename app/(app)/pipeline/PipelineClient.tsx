@@ -162,6 +162,13 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                     <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide flex-1">{st}</span>
                     <span className="text-xs font-semibold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">{cols.length}</span>
                   </div>
+                  {cols.some(l => l.value_estimated) && (
+                    <div className="px-3 py-1.5 border-b border-gray-100 bg-emerald-50/50">
+                      <span className="text-[10px] text-emerald-700 font-semibold">
+                        ≈ {cols.reduce((sum, l) => sum + (Number(l.value_estimated) || 0), 0).toLocaleString('ro-RO')} MDL
+                      </span>
+                    </div>
+                  )}
                   <div className="flex-1 overflow-y-auto p-2 space-y-2">
                     {cols.map((l:any)=>(
                       <div key={l.id} draggable
@@ -172,6 +179,11 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                         <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span>
                         <div className="text-sm font-semibold text-gray-900 mt-1.5 mb-0.5">{l.name}</div>
                         <div className="text-xs text-gray-500 mb-1">{l.company||'—'}</div>
+                        {l.value_estimated && (
+                          <div className="text-[10px] text-emerald-700 font-semibold mb-1">
+                            {Number(l.value_estimated).toLocaleString('ro-RO')} MDL
+                          </div>
+                        )}
                         {l.service_type && (
                           <div className="text-[10px] bg-[#004437]/8 text-[#004437] px-2 py-0.5 rounded-full inline-block mb-1.5 font-medium">
                             {l.service_type}
@@ -215,6 +227,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                 {[
                   { label: 'Contact', field: 'name' },
                   { label: 'Serviciu', field: null },
+                  { label: 'Valoare', field: null },
                   { label: 'Telefon', field: null },
                   { label: 'Reminder', field: null },
                   { label: 'Responsabil', field: 'assigned_to' },
@@ -237,7 +250,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                   <>
                     {/* Header grup status */}
                     <tr key={`group-${st}`}>
-                      <td colSpan={7} className="px-4 py-2 bg-gray-50 border-b border-gray-100">
+                      <td colSpan={8} className="px-4 py-2 bg-gray-50 border-b border-gray-100">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full flex-shrink-0" style={{background: sc}} />
                           <span className="text-xs font-semibold text-gray-600">{st}</span>
@@ -272,6 +285,12 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                           <td className="px-4 py-3">
                             {l.service_type
                               ? <span className="text-xs bg-[#004437]/10 text-[#004437] px-2 py-0.5 rounded-full font-medium whitespace-nowrap">{l.service_type}</span>
+                              : <span className="text-xs text-gray-300">—</span>}
+                          </td>
+                          {/* Valoare estimată */}
+                          <td className="px-4 py-3">
+                            {l.value_estimated
+                              ? <span className="text-xs text-emerald-700 font-semibold whitespace-nowrap">{Number(l.value_estimated).toLocaleString('ro-RO')} MDL</span>
                               : <span className="text-xs text-gray-300">—</span>}
                           </td>
                           {/* Telefon */}
@@ -317,7 +336,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
                 )
               })}
               {sorted.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-16 text-gray-400 text-sm">Niciun lead</td></tr>
+                <tr><td colSpan={8} className="text-center py-16 text-gray-400 text-sm">Niciun lead</td></tr>
               )}
             </tbody>
           </table>
