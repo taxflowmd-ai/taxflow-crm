@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { X, Save, Trash2, MessageCircle, Phone, Mail, Building2, User, Tag, Calendar, FileText, Clock, Landmark, Hash, Briefcase, Pencil } from 'lucide-react'
+import { X, Save, Trash2, MessageCircle, Phone, Mail, Building2, User, Tag, Calendar, FileText, Clock, Landmark, Hash, Briefcase, Pencil, DollarSign } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import BankingTab from '@/components/BankingTab'
 
@@ -72,6 +72,7 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
       employees_count: data?.employees_count ?? '',
       contract_value: data?.contract_value ?? '',
       service_type: data?.service_type || '',
+      value_estimated: data?.value_estimated ?? '',
     })
     setLoading(false)
   }
@@ -92,6 +93,7 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
           employees_count: form.employees_count !== '' ? Number(form.employees_count) : null,
           contract_value: form.contract_value !== '' ? Number(form.contract_value) : null,
           service_type: form.service_type || null,
+          value_estimated: form.value_estimated !== '' ? Number(form.value_estimated) : null,
         }),
       })
       const json = await res.json()
@@ -201,6 +203,11 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                   <span className="w-1.5 h-1.5 rounded-full" style={{ background: sc }} />
                   <span className="text-xs" style={{ color: sc }}>{lead?.status}</span>
                   {lead?.idno && <span className="text-[10px] text-gray-400 font-mono">· {lead.idno}</span>}
+                  {lead?.value_estimated && (
+                    <span className="text-[10px] text-emerald-600 font-medium">
+                      · {Number(lead.value_estimated).toLocaleString('ro-RO')} MDL
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -278,6 +285,10 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                       <label className="label">Status</label>
                       <select {...f('status')} className="input">{STATUSES.map(s => <option key={s}>{s}</option>)}</select>
                     </div>
+                    <div>
+                      <label className="label flex items-center gap-1.5"><DollarSign size={12} />Valoare estimată (MDL)</label>
+                      <input {...f('value_estimated')} type="number" min="0" placeholder="0" className="input" />
+                    </div>
                     {isAdmin && team.length > 0 && (
                       <div>
                         <label className="label flex items-center gap-1.5"><User size={12} />Responsabil</label>
@@ -293,29 +304,28 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                     </div>
                   </div>
 
-                  {/* Date fiscale — doar pentru Client activ */}
                   {form.status === 'Client activ' && (
-                  <div className="border-t border-gray-100 pt-4">
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                      <Briefcase size={11} /> Date fiscale
-                    </p>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="label">Regim fiscal</label>
-                        <select {...f('fiscal_regime')} className="input">
-                          {FISCAL_REGIMES.map(r => <option key={r}>{r}</option>)}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="label flex items-center gap-1.5"><User size={12} />Nr. angajați</label>
-                        <input {...f('employees_count')} type="number" min="0" placeholder="0" className="input" />
-                      </div>
-                      <div className="col-span-2">
-                        <label className="label flex items-center gap-1.5"><Landmark size={12} />Valoare contract lunar (MDL)</label>
-                        <input {...f('contract_value')} type="number" min="0" placeholder="0" className="input" />
+                    <div className="border-t border-gray-100 pt-4">
+                      <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                        <Briefcase size={11} /> Date fiscale
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="label">Regim fiscal</label>
+                          <select {...f('fiscal_regime')} className="input">
+                            {FISCAL_REGIMES.map(r => <option key={r}>{r}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="label flex items-center gap-1.5"><User size={12} />Nr. angajați</label>
+                          <input {...f('employees_count')} type="number" min="0" placeholder="0" className="input" />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="label flex items-center gap-1.5"><Landmark size={12} />Valoare contract lunar (MDL)</label>
+                          <input {...f('contract_value')} type="number" min="0" placeholder="0" className="input" />
+                        </div>
                       </div>
                     </div>
-                  </div>
                   )}
 
                   <div>
@@ -399,19 +409,14 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                               <span className="text-[10px] text-gray-400">
                                 {new Date(h.created_at).toLocaleDateString('ro-RO', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
                               </span>
-                              {/* Butoane editare/ștergere — doar admin și doar pentru note */}
                               {isAdmin && isNote && !isEditingThis && (
                                 <div className="flex items-center gap-0.5 opacity-0 group-hover/note:opacity-100 transition-opacity ml-1">
-                                  <button
-                                    onClick={() => { setEditingNoteId(h.id); setEditingNoteText(h.content || h.action || '') }}
-                                    className="p-1 rounded text-gray-400 hover:text-[#004437] transition-colors"
-                                    title="Editează">
+                                  <button onClick={() => { setEditingNoteId(h.id); setEditingNoteText(h.content || h.action || '') }}
+                                    className="p-1 rounded text-gray-400 hover:text-[#004437] transition-colors" title="Editează">
                                     <Pencil size={11} />
                                   </button>
-                                  <button
-                                    onClick={() => handleDeleteNote(h.id)}
-                                    className="p-1 rounded text-gray-400 hover:text-red-500 transition-colors"
-                                    title="Șterge">
+                                  <button onClick={() => handleDeleteNote(h.id)}
+                                    className="p-1 rounded text-gray-400 hover:text-red-500 transition-colors" title="Șterge">
                                     <Trash2 size={11} />
                                   </button>
                                 </div>
@@ -420,25 +425,13 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                           </div>
                           {isEditingThis ? (
                             <div className="space-y-2">
-                              <textarea
-                                className="input resize-none w-full text-xs"
-                                rows={3}
-                                value={editingNoteText}
-                                onChange={e => setEditingNoteText(e.target.value)}
-                                autoFocus
-                              />
+                              <textarea className="input resize-none w-full text-xs" rows={3}
+                                value={editingNoteText} onChange={e => setEditingNoteText(e.target.value)} autoFocus />
                               <div className="flex justify-end gap-2">
-                                <button
-                                  onClick={() => { setEditingNoteId(null); setEditingNoteText('') }}
-                                  className="text-xs border border-gray-200 px-2.5 py-1 rounded-lg hover:bg-gray-50">
-                                  Anulează
-                                </button>
-                                <button
-                                  onClick={() => handleEditNote(h.id)}
-                                  disabled={!editingNoteText.trim()}
-                                  className="text-xs bg-[#004437] text-white px-2.5 py-1 rounded-lg hover:bg-[#005a47] disabled:opacity-40">
-                                  Salvează
-                                </button>
+                                <button onClick={() => { setEditingNoteId(null); setEditingNoteText('') }}
+                                  className="text-xs border border-gray-200 px-2.5 py-1 rounded-lg hover:bg-gray-50">Anulează</button>
+                                <button onClick={() => handleEditNote(h.id)} disabled={!editingNoteText.trim()}
+                                  className="text-xs bg-[#004437] text-white px-2.5 py-1 rounded-lg hover:bg-[#005a47] disabled:opacity-40">Salvează</button>
                               </div>
                             </div>
                           ) : (
