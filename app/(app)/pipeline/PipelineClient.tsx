@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Plus, LayoutGrid, List } from 'lucide-react'
@@ -22,6 +22,7 @@ interface Props { leads:any[]; team:any[]; isAdmin:boolean; currentUserId:string
 
 export default function PipelineClient({ leads, team, isAdmin, currentUserId }:Props) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [filter, setFilter] = useState('all')
   const [view, setView] = useState<'kanban'|'list'>(() => {
     if (typeof window !== 'undefined') {
@@ -29,6 +30,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
     }
     return 'kanban'
   })
+  const [statusFilter, setStatusFilter] = useState<string|null>(null)
   const [showModal, setShowModal] = useState(false)
   const [dragId, setDragId] = useState<string|null>(null)
   const [selectedLeadId, setSelectedLeadId] = useState<string|null>(null)
@@ -37,6 +39,17 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
   const [form, setForm] = useState({name:'',company:'',phone:'',email:'',source:'Meta Ads',status:'Nou',assigned_to:'',note:'',reminder_at:'',service_type:''})
 
   const filtered = leads.filter(l => filter==='all' || l.assignee?.id===filter)
+
+  // Sincronizează cu query params din URL (?status=, ?view=)
+  useEffect(() => {
+    const status = searchParams.get('status')
+    const viewParam = searchParams.get('view')
+    if (status) setStatusFilter(status)
+    if (viewParam === 'list' || viewParam === 'kanban') {
+      setView(viewParam)
+      localStorage.setItem('pipeline_view', viewParam)
+    }
+  }, [searchParams])
 
   function toggleView(v: 'kanban'|'list') {
     setView(v)
@@ -154,7 +167,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
               const cols = filtered.filter(l=>l.status===st)
               const sc = ST_COLORS[st]
               return (
-                <div key={st} className="w-60 flex flex-col bg-gray-50 border border-gray-200 rounded-xl max-h-[calc(100vh-220px)]"
+                <div key={st} className={`w-60 flex flex-col bg-gray-50 border rounded-xl max-h-[calc(100vh-220px)] transition-all ${statusFilter === st ? 'border-[#004437] shadow-md ring-2 ring-[#004437]/20' : 'border-gray-200'}`}
                   onDragOver={e=>e.preventDefault()}
                   onDrop={e=>{e.preventDefault();if(dragId)handleDrop(st,dragId)}}>
                   <div className="px-3 py-2.5 border-b border-gray-200 flex items-center gap-2 flex-shrink-0">
