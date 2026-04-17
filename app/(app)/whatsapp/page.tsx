@@ -26,6 +26,8 @@ type Message = {
   status: string
   created_at: string
   sent_by?: string
+  media_url?: string | null
+  media_mime_type?: string | null
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -176,24 +178,33 @@ export default function WhatsAppPage() {
   }, [draft])
   
   // Auto-refresh silențios mesaje la fiecare 15 secunde
-    useEffect(() => {
-      if (!selected) return
-      const interval = setInterval(async () => {
-        const { data } = await (supabase as any)
-          .from('whatsapp_messages')
-          .select('*')
-          .eq('conversation_id', selected.id)
-          .order('created_at', { ascending: true })
-        if (data) setMessages(data)
-      }, 15000)
-      return () => clearInterval(interval)
-    }, [selected?.id])
-    
-    // Auto-refresh conversații la fiecare 30 secunde
-    useEffect(() => {
-      const interval = setInterval(() => loadConversations(), 60000)
-      return () => clearInterval(interval)
-    }, [])
+  useEffect(() => {
+    if (!selected) return
+    const interval = setInterval(async () => {
+      const { data } = await (supabase as any)
+        .from('whatsapp_messages')
+        .select('*')
+        .eq('conversation_id', selected.id)
+        .order('created_at', { ascending: true })
+      if (data) {
+        // Actualizează doar dacă s-au adăugat mesaje noi
+        setMessages(prev => {
+          if (data.length !== prev.length) return data
+          const lastPrev = prev[prev.length - 1]?.id
+          const lastNew = data[data.length - 1]?.id
+          if (lastPrev !== lastNew) return data
+          return prev // Fără re-render dacă nu s-a schimbat nimic
+        })
+      }
+    }, 15000)
+    return () => clearInterval(interval)
+  }, [selected?.id])
+
+  // Auto-refresh conversații la fiecare 60 secunde
+  useEffect(() => {
+    const interval = setInterval(() => loadConversations(), 60000)
+    return () => clearInterval(interval)
+  }, [])
     
   useEffect(() => {
     const active = conversations.filter(c => showArchived ? c.is_archived : !c.is_archived)
@@ -685,18 +696,46 @@ export default function WhatsAppPage() {
               messages.map(msg => {
                 const isOut = msg.direction === 'outbound'
                 const isTemplate = msg.message_type === 'template'
+                const isImage = msg.message_type === 'image'
+                const isDocument = msg.message_type === 'document'
+                const isMedia = isImage || isDocument
                 return (
                   <div key={msg.id} className={`flex ${isOut ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-xs lg:max-w-md xl:max-w-lg rounded-2xl px-4 py-2.5 shadow-sm ${
+                    <div className={`max-w-xs lg:max-w-md xl:max-w-lg rounded-2xl shadow-sm overflow-hidden ${
                       isOut ? 'bg-[#004437] text-white rounded-br-sm' : 'bg-white text-gray-900 rounded-bl-sm'
                     }`}>
                       {isTemplate && (
-                        <div className={`text-[10px] mb-1 flex items-center gap-1 ${isOut ? 'text-white/50' : 'text-gray-400'}`}>
+                        <div className={`text-[10px] px-4 pt-2.5 flex items-center gap-1 ${isOut ? 'text-white/50' : 'text-gray-400'}`}>
                           <Zap size={9} /> Template
                         </div>
                       )}
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body}</p>
-                      <div className={`flex items-center gap-1 mt-1 ${isOut ? 'justify-end' : 'justify-start'}`}>
+                      {isImage && msg.media_url && (
+                        <a href={`/api/whatsapp/media?id=${msg.media_url}`} target="_blank" rel="noopener">
+                          <img src={`/api/whatsapp/media?id=${msg.media_url}`} alt={msg.body || 'Imagine'}
+                            className="max-w-full block" style={{ maxHeight: 240 }} />
+                        </a>
+                      )}
+                      {isDocument && msg.media_url && (
+                        <a href={`/api/whatsapp/media?id=${msg.media_url}`} target="_blank" rel="noopener"
+                          className={`flex items-center gap-3 px-4 py-3 ${isOut ? 'text-white/90 hover:text-white' : 'text-[#004437]'} transition-colors`}>
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 text-lg ${isOut ? 'bg-white/20' : 'bg-[#004437]/10'}`}>📄</div>
+                          <div className="min-w-0">
+                            <div className="text-sm font-medium truncate">{msg.body?.replace('📄 ', '') || 'Document'}</div>
+                            <div className={`text-[10px] ${isOut ? 'text-white/50' : 'text-gray-400'}`}>Apasă pentru a deschide</div>
+                          </div>
+                        </a>
+                      )}
+                      {!isMedia && (
+                        <div className="px-4 py-2.5">
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.body}</p>
+                        </div>
+                      )}
+                      {isImage && msg.body && msg.body !== '📷 Imagine' && (
+                        <div className="px-4 pb-1 pt-1">
+                          <p className="text-xs opacity-80">{msg.body}</p>
+                        </div>
+                      )}
+                      <div className={`flex items-center gap-1 px-4 pb-2 ${isOut ? 'justify-end' : 'justify-start'}`}>
                         <span className={`text-[10px] ${isOut ? 'text-white/60' : 'text-gray-400'}`}>
                           {new Date(msg.created_at).toLocaleTimeString('ro-RO', { hour: '2-digit', minute: '2-digit' })}
                         </span>
