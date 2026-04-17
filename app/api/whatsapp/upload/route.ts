@@ -15,7 +15,14 @@ function getSupabase() {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: { getAll() { return cookieStore.getAll() }, setAll() {} } }
+    {
+      cookies: {
+        getAll() { return (cookieStore as any).getAll() },
+        setAll(c: { name: string; value: string; options?: any }[]) {
+          c.forEach(({ name, value, options }) => (cookieStore as any).set(name, value, options))
+        }
+      }
+    }
   )
 }
 
@@ -33,6 +40,20 @@ export async function POST(req: NextRequest) {
     }
 
     const db = admin()
+
+    // Validare tip fișier
+    const allowedTypes = ['image/jpeg','image/png','image/webp','image/gif','application/pdf',
+      'application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/plain']
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json({ error: `Tip fișier nepermis: ${file.type}` }, { status: 400 })
+    }
+
+    // Validare dimensiune (max 16MB)
+    if (file.size > 16 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Fișierul depășește 16MB' }, { status: 400 })
+    }
 
     // Obține conversația pentru wa_phone
     const { data: conv } = await db
