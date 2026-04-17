@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Plus, CheckSquare, Square, Trash2, RefreshCw, Pencil } from 'lucide-react'
@@ -39,9 +40,16 @@ function toInputDate(iso: string|null) {
 }
 
 export default function TasksPage() {
+  const searchParams = useSearchParams()
   const [tasks, setTasks] = useState<any[]>([])
   const [leads, setLeads] = useState<any[]>([])
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const p = new URLSearchParams(window.location.search).get('filter')
+      if (p && ['all','today','overdue','pending','recurring','done'].includes(p)) return p
+    }
+    return 'all'
+  })
   const [showModal, setShowModal] = useState(false)
   const [editingTask, setEditingTask] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
@@ -70,6 +78,14 @@ export default function TasksPage() {
   }
 
   useEffect(()=>{ load() },[])
+
+  // Sincronizează filtrul cu query param din URL
+  useEffect(() => {
+    const p = searchParams.get('filter')
+    if (p && ['all','today','overdue','pending','recurring','done'].includes(p)) {
+      setFilter(p)
+    }
+  }, [searchParams])
 
   const now = new Date()
   const todayStart = new Date(); todayStart.setHours(0,0,0,0)
