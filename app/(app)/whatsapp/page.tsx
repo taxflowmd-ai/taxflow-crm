@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Send, Search, MessageCircle, ExternalLink, RefreshCw, Archive, Trash2, MoreVertical, Zap, UserCircle, Plus, ChevronDown, X } from 'lucide-react'
+import { Send, Search, MessageCircle, ExternalLink, RefreshCw, Archive, Trash2, MoreVertical, Zap, UserCircle, Plus, ChevronDown, X, Paperclip } from 'lucide-react'
 
 type Conversation = {
   id: string
@@ -85,6 +85,9 @@ export default function WhatsAppPage() {
   const menuRef = useRef<HTMLDivElement>(null)
   const templateRef = useRef<HTMLDivElement>(null)
   const statusMenuRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadingFile, setUploadingFile] = useState(false)
   const searchParams = useSearchParams()
   const supabase = createClient()
 
@@ -163,6 +166,14 @@ export default function WhatsAppPage() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Auto-resize textarea
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 128) + 'px'
+  }, [draft])
   
   // Auto-refresh silențios mesaje la fiecare 15 secunde
     useEffect(() => {
@@ -362,6 +373,28 @@ export default function WhatsAppPage() {
   }
 
   const windowOpen = isWindowOpen(messages)
+
+  async function sendFile(file: File) {
+    if (!selected || !windowOpen) return
+    setUploadingFile(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('conversationId', selected.id)
+      const res = await fetch('/api/whatsapp/upload', {
+        method: 'POST',
+        body: formData,
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Eroare upload')
+      toast.success('Fișier trimis')
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setUploadingFile(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
   const totalUnread = conversations.filter(c => !c.is_archived).reduce((s, c) => s + (c.unread_count || 0), 0)
   const archivedCount = conversations.filter(c => c.is_archived).length
 
@@ -682,9 +715,31 @@ export default function WhatsAppPage() {
           </div>
 
           {/* Input trimitere */}
-          <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-end gap-3">
+          <div className="bg-white border-t border-gray-200 px-4 py-3 flex items-end gap-2">
+            {/* Buton atașare fișier */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
+              onChange={e => {
+                const file = e.target.files?.[0]
+                if (file) sendFile(file)
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={!windowOpen && messages.length > 0 || uploadingFile}
+              className="w-10 h-10 flex items-center justify-center rounded-xl border border-gray-200 text-gray-400 hover:text-[#004437] hover:border-[#004437] transition-colors disabled:opacity-30 flex-shrink-0"
+              title="Atașează fișier">
+              {uploadingFile
+                ? <div className="w-4 h-4 border-2 border-gray-300 border-t-[#004437] rounded-full animate-spin" />
+                : <Paperclip size={15} />}
+            </button>
+
             <textarea
-              className={`flex-1 resize-none border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors max-h-32 min-h-[44px] ${
+              ref={textareaRef}
+              className={`flex-1 resize-none border rounded-xl px-4 py-2.5 text-sm outline-none transition-colors min-h-[44px] max-h-32 ${
                 !windowOpen && messages.length > 0
                   ? 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
                   : 'border-gray-200 focus:border-[#004437]'
@@ -697,6 +752,7 @@ export default function WhatsAppPage() {
                 if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
               }}
               rows={1}
+              style={{ overflow: 'hidden' }}
             />
             <button
               onClick={sendMessage}
