@@ -92,8 +92,22 @@ async function processInboundMessage(msg: any, contact: any) {
     conv = newConv as any
 
     if (!existingLead && conv) {
+      // Găsește primul admin activ pentru a asigna lead-ul nou
+      const { data: adminUser } = await db
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin')
+        .eq('is_active', true)
+        .order('created_at')
+        .limit(1)
+        .single()
+
       const { data: newLead } = await db.from('leads').insert({
-        name: waName, phone: '+' + waPhone, source: 'WhatsApp', status: 'Nou',
+        name: waName,
+        phone: '+' + waPhone,
+        source: 'WhatsApp',
+        status: 'Nou',
+        assigned_to: adminUser?.id || null,
       } as any).select().single()
       if (newLead) await db.from('whatsapp_conversations').update({ lead_id: (newLead as any).id } as any).eq('id', (conv as any).id)
     }
