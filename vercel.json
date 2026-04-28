@@ -3,10 +3,10 @@
   "buildCommand": "next build",
   "devCommand": "next dev",
   "installCommand": "npm install"
-  "crons": [
+ }
+ "crons": [
     {
       "path": "/api/cron/report-tasks",
       "schedule": "0 7 * * *"
     }
   ]
-}
