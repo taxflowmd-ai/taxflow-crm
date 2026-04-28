@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const { data: { user } } = await getSupabase().auth.getUser()
   if (!user) return NextResponse.json({ error: 'Neautentificat' }, { status: 401 })
-  const { id, code, label, sort_order, deadline_day, frequency } = await req.json()
+  const { id, code, label, sort_order, deadline_day, frequency, deadline_month } = await req.json()
   const { data, error } = await admin().from('report_types').update({
     code: code.toUpperCase().trim(),
     label: label.trim(),
