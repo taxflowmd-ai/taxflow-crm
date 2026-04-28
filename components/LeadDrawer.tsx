@@ -29,11 +29,14 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [note, setNote] = useState('')
-  const [tab, setTab] = useState<'info'|'note'|'history'|'banking'>('info')
+  const [tab, setTab] = useState<'info'|'note'|'history'|'banking'|'fiscal'>('info')
   const [form, setForm] = useState<any>({})
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [editingNoteId, setEditingNoteId] = useState<string|null>(null)
   const [editingNoteText, setEditingNoteText] = useState('')
+  const [reportTypes, setReportTypes] = useState<any[]>([])
+  const [clientObligations, setClientObligations] = useState<string[]>([])
+  const [savingObligations, setSavingObligations] = useState(false)
 
   useEffect(() => {
     if (!leadId) return
@@ -74,6 +77,14 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
       service_type: data?.service_type || '',
       value_estimated: data?.value_estimated ?? '',
     })
+
+    // Încarcă tipuri rapoarte și obligații client
+    const [{ data: rt }, { data: obls }] = await Promise.all([
+      (supabase as any).from('report_types').select('*').order('sort_order'),
+      (supabase as any).from('client_obligations').select('report_type_id').eq('lead_id', id).eq('is_active', true),
+    ])
+    setReportTypes(rt || [])
+    setClientObligations((obls || []).map((o: any) => o.report_type_id))
     setLoading(false)
   }
 
@@ -148,6 +159,25 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
     if (leadId) loadLead(leadId)
   }
 
+  async function saveObligations(selectedIds: string[]) {
+    if (!leadId) return
+    setSavingObligations(true)
+    try {
+      const res = await fetch('/api/compliance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId, reportTypeIds: selectedIds }),
+      })
+      if (!res.ok) throw new Error()
+      setClientObligations(selectedIds)
+      toast.success('Obligații salvate')
+    } catch {
+      toast.error('Eroare la salvare')
+    } finally {
+      setSavingObligations(false)
+    }
+  }
+
   async function handleDelete() {
     if (!leadId) return
     const res = await fetch(`/api/leads/${leadId}`, { method: 'DELETE' })
@@ -184,6 +214,7 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
     { id: 'info', label: 'Informații' },
     { id: 'note', label: 'Adaugă notă' },
     { id: 'history', label: `Istoric (${history.length})` },
+    { id: 'fiscal', label: '📋 Fiscal' },
     { id: 'banking', label: '🏦 Bancă' },
   ]
 
@@ -441,6 +472,72 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
                       </div>
                     )
                   })}
+                </div>
+              )}
+
+              {tab === 'fiscal' && (
+                <div className="p-4 space-y-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Obligații fiscale</p>
+                    <span className="text-[10px] text-gray-400">{clientObligations.length} active</span>
+                  </div>
+                  {reportTypes.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400 text-sm">
+                      Niciun tip de raport configurat
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {reportTypes.map((t: any) => {
+                        const isChecked = clientObligations.includes(t.id)
+                        const freqLabel: Record<string,string> = {
+                          monthly: 'lunar', quarterly: 'trimestrial',
+                          semi: 'semestrial', annual: 'anual'
+                        }
+                        return (
+                          <label key={t.id}
+                            className={`flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-colors ${isChecked ? 'bg-[#e8f5f0] border border-[#004437]/20' : 'bg-gray-50 border border-transparent hover:border-gray-200'}`}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={e => {
+                                const newIds = e.target.checked
+                                  ? [...clientObligations, t.id]
+                                  : clientObligations.filter((id: string) => id !== t.id)
+                                saveObligations(newIds)
+                              }}
+                              className="w-4 h-4 accent-[#004437] flex-shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold text-gray-700 font-mono">{t.code}</span>
+                                <span className="text-xs text-gray-500 truncate">{t.label}</span>
+                              </div>
+                              {(t.frequency || t.deadline_day) && (
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {t.frequency && (
+                                    <span className="text-[10px] text-gray-400 capitalize">
+                                      {freqLabel[t.frequency] || t.frequency}
+                                    </span>
+                                  )}
+                                  {t.deadline_day && (
+                                    <span className="text-[10px] text-gray-400">
+                                      · termen: {t.deadline_day}
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            {isChecked && (
+                              <span className="text-[10px] text-[#004437] font-medium flex-shrink-0">Activ</span>
+                            )}
+                          </label>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {savingObligations && (
+                    <p className="text-xs text-gray-400 text-center">Se salvează...</p>
+                  )}
                 </div>
               )}
 
