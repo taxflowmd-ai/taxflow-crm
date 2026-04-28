@@ -50,8 +50,8 @@ function ObligationsModal({ client, reportTypes, current, onSave, onClose }: any
 function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
   const [types, setTypes] = useState<any[]>(reportTypes)
   const [editId, setEditId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ code: '', label: '', deadline_day: '', frequency: 'monthly' })
-  const [newForm, setNewForm] = useState({ code: '', label: '', deadline_day: '', frequency: 'monthly' })
+  const [editForm, setEditForm] = useState({ code: '', label: '', deadline_day: '', frequency: 'monthly', deadline_month: '' })
+  const [newForm, setNewForm] = useState({ code: '', label: '', deadline_day: '', frequency: 'monthly', deadline_month: '' })
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -70,13 +70,14 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
       body: JSON.stringify({
         ...newForm,
         deadline_day: newForm.deadline_day ? Number(newForm.deadline_day) : null,
+        deadline_month: newForm.frequency === 'annual' && newForm.deadline_month ? Number(newForm.deadline_month) : null,
         sort_order: types.length + 1
       }),
     })
     const json = await res.json()
     if (!res.ok) { toast.error(json.error); setSaving(false); return }
     setTypes(t => [...t, json.data])
-    setNewForm({ code: '', label: '', deadline_day: '', frequency: 'monthly' })
+    setNewForm({ code: '', label: '', deadline_day: '', frequency: 'monthly', deadline_month: '' })
     setAdding(false)
     setSaving(false)
     toast.success('Tip adăugat')
@@ -91,6 +92,7 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
         id,
         ...editForm,
         deadline_day: editForm.deadline_day ? Number(editForm.deadline_day) : null,
+        deadline_month: editForm.frequency === 'annual' && editForm.deadline_month ? Number(editForm.deadline_month) : null,
       }),
     })
     const json = await res.json()
@@ -148,6 +150,18 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
                         {FREQ_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                       </select>
                     </div>
+                    {editForm.frequency === 'annual' && (
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-[10px] text-gray-500 whitespace-nowrap">Luna</label>
+                        <select value={editForm.deadline_month} onChange={e => setEditForm(f => ({...f, deadline_month: e.target.value}))}
+                          className="input w-20 text-xs py-1">
+                          <option value="">—</option>
+                          {['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Nov','Dec'].map((m, i) =>
+                            <option key={i+1} value={String(i+1)}>{m}</option>
+                          )}
+                        </select>
+                      </div>
+                    )}
                   </div>
                   <div className="flex justify-end gap-2">
                     <button onClick={() => setEditId(null)} className="text-xs border border-gray-200 px-2.5 py-1 rounded-lg">Anulează</button>
@@ -168,7 +182,7 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
                       {t.deadline_day && <span className="text-[10px] text-gray-400">· zi {t.deadline_day}</span>}
                     </div>
                   </div>
-                  <button onClick={() => { setEditId(t.id); setEditForm({ code: t.code, label: t.label, deadline_day: t.deadline_day || '', frequency: t.frequency || 'monthly' }) }}
+                  <button onClick={() => { setEditId(t.id); setEditForm({ code: t.code, label: t.label, deadline_day: t.deadline_day || '', frequency: t.frequency || 'monthly', deadline_month: t.deadline_month ? String(t.deadline_month) : '' }) }}
                     className="text-gray-300 hover:text-[#004437] transition-colors flex-shrink-0"><Pencil size={13}/></button>
                   <button onClick={() => handleDelete(t.id, t.code)}
                     className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"><Trash2 size={13}/></button>
@@ -198,6 +212,18 @@ function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
                     {FREQ_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
                 </div>
+                {newForm.frequency === 'annual' && (
+                  <div className="flex items-center gap-1.5">
+                    <label className="text-[10px] text-gray-500 whitespace-nowrap">Luna</label>
+                    <select value={newForm.deadline_month} onChange={e => setNewForm(f => ({...f, deadline_month: e.target.value}))}
+                      className="input w-20 text-xs py-1">
+                      <option value="">—</option>
+                      {['Ian','Feb','Mar','Apr','Mai','Iun','Iul','Aug','Sep','Oct','Nov','Dec'].map((m, i) =>
+                        <option key={i+1} value={String(i+1)}>{m}</option>
+                      )}
+                    </select>
+                  </div>
+                )}
               </div>
               <div className="flex justify-end gap-2">
                 <button onClick={() => setAdding(false)} className="text-xs border border-gray-200 px-2.5 py-1 rounded-lg">Anulează</button>
@@ -320,14 +346,51 @@ export default function ReportsPage() {
   function prevMonth() { if (month === 1) { setMonth(12); setYear(y => y-1) } else setMonth(m => m-1) }
   function nextMonth() { if (month === 12) { setMonth(1); setYear(y => y+1) } else setMonth(m => m+1) }
 
-  // Calculează zilele rămase până la termen
-  function getDaysUntilDeadline(deadlineDay: number): number {
-    const today = new Date()
-    const deadline = new Date(year, month - 1, deadlineDay)
-    // Dacă luna curentă e trecută, calculează pentru luna viitoare
-    if (deadline < today && today.getMonth() === deadline.getMonth() && today.getFullYear() === deadline.getFullYear()) {
-      return -1 * Math.floor((today.getTime() - deadline.getTime()) / 86400000)
+  // Calculează data termenului real în funcție de frecvență și luna/anul curent afișat
+  function getDeadlineDate(t: any): Date | null {
+    if (!t.deadline_day) return null
+    const day = t.deadline_day
+    const freq = t.frequency || 'monthly'
+
+    if (freq === 'monthly') {
+      // Termen: ziua X a lunii URMĂTOARE față de luna afișată
+      const d = new Date(year, month, day) // month (1-12) → luna următoare în JS (0-11)
+      return d
     }
+
+    if (freq === 'quarterly') {
+      // Trimestrul lunii afișate → termen: ziua X a lunii următoare trimestrului
+      // Q1(ian-mar)→apr, Q2(apr-iun)→iul, Q3(iul-sep)→oct, Q4(oct-dec)→ian an următor
+      const quarterEndMonth = Math.ceil(month / 3) * 3 // 3, 6, 9, 12
+      if (quarterEndMonth === 12) {
+        return new Date(year + 1, 0, day) // ianuarie an următor
+      }
+      return new Date(year, quarterEndMonth, day) // luna următoare trimestrului
+    }
+
+    if (freq === 'semi') {
+      // S1(ian-iun)→25 iul, S2(iul-dec)→25 ian an următor
+      if (month <= 6) {
+        return new Date(year, 6, day) // iulie
+      }
+      return new Date(year + 1, 0, day) // ianuarie an următor
+    }
+
+    if (freq === 'annual') {
+      // Folosește deadline_month dacă e configurat, altfel luna curentă
+      const targetMonth = t.deadline_month ? t.deadline_month - 1 : 0 // 0-indexed
+      const targetYear = t.deadline_month && t.deadline_month <= month ? year + 1 : year
+      return new Date(targetYear, targetMonth, day)
+    }
+
+    return null
+  }
+
+  function getDaysUntilDeadline(t: any): number | null {
+    const deadline = getDeadlineDate(t)
+    if (!deadline) return null
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
     return Math.ceil((deadline.getTime() - today.getTime()) / 86400000)
   }
 
@@ -455,11 +518,33 @@ export default function ReportsPage() {
                       <th key={t.id} className={`px-1 py-3 font-semibold text-center w-[52px] max-w-[52px] text-xs ${i === reportTypes.length-1 ? 'rounded-tr-xl' : ''}`}>
                         <div className="truncate w-full text-center" title={t.code}>{t.code}</div>
                         {t.deadline_day && (() => {
-                          const days = getDaysUntilDeadline(t.deadline_day)
-                          if (days <= 0) return <div className="text-[9px] text-red-300 font-normal mt-0.5">exp.</div>
+                          // Verifică dacă suntem în luna relevantă pentru acest tip
+                          const freq = t.frequency || 'monthly'
+                          const isRelevant = freq === 'monthly' ? true
+                            : freq === 'quarterly' ? [4, 7, 10, 1].includes(month)
+                            : freq === 'semi' ? [7, 1].includes(month)
+                            : freq === 'annual' ? (t.deadline_month ? month === t.deadline_month : month === 1)
+                            : true
+
+                          if (!isRelevant) return null
+
+                          // Verifică dacă toți clienții cu această obligație au status done
+                          const allDone = clients.every(c => {
+                            const oblIds = obligations[c.id] || []
+                            if (!oblIds.includes(t.id)) return true
+                            const s = reports[`${c.id}_${t.id}`]
+                            return s === 'done' || s === 'na'
+                          })
+                          if (allDone) return null
+
+                          const days = getDaysUntilDeadline(t)
+                          if (days === null) return null
+                          // Dacă termenul a trecut (days < 0) și suntem în luna relevantă → exp.
+                          if (days < 0) return <div className="text-[9px] text-red-300 font-normal mt-0.5">exp.</div>
+                          if (days === 0) return <div className="text-[9px] text-red-300 font-bold mt-0.5">azi</div>
                           if (days <= 3) return <div className="text-[9px] text-red-300 font-normal mt-0.5">{days}z</div>
                           if (days <= 7) return <div className="text-[9px] text-amber-300 font-normal mt-0.5">{days}z</div>
-                          return <div className="text-[9px] text-white/40 font-normal mt-0.5">zi {t.deadline_day}</div>
+                          return <div className="text-[9px] text-white/30 font-normal mt-0.5">{t.deadline_day}</div>
                         })()}
                       </th>
                     ))}
@@ -499,9 +584,8 @@ export default function ReportsPage() {
                         {reportTypes.map(t => {
                           const hasObl = clientObls.includes(t.id)
                           const key = `${client.id}_${t.id}`
-                          const status: Status = reports[key] || 'pending'
-                          const cfg = STATUS_CFG[status]
                           const isSaving = saving === key
+
                           if (!hasObl) return (
                             <td key={t.id} className="px-1 py-1.5 text-center">
                               <div className="w-full h-8 rounded flex items-center justify-center">
@@ -509,6 +593,32 @@ export default function ReportsPage() {
                               </div>
                             </td>
                           )
+
+                          // Determină dacă luna curentă afișată e luna de raportare
+                          const isRelevantMonth = (() => {
+                            const freq = t.frequency || 'monthly'
+                            if (freq === 'monthly') return true
+                            if (freq === 'quarterly') {
+                              // Relevant în luna termenului: apr(4), iul(7), oct(10), ian(1)
+                              return [4, 7, 10, 1].includes(month)
+                            }
+                            if (freq === 'semi') {
+                              // Relevant în iulie(7) și ianuarie(1)
+                              return [7, 1].includes(month)
+                            }
+                            if (freq === 'annual') {
+                              // Relevant doar în luna termenului configurat
+                              return t.deadline_month ? month === t.deadline_month : month === 1
+                            }
+                            return true
+                          })()
+
+                          // Statusul salvat sau default bazat pe relevanța lunii
+                          const savedStatus = reports[key]
+                          const defaultStatus: Status = isRelevantMonth ? 'pending' : 'na'
+                          const status: Status = savedStatus || defaultStatus
+                          const cfg = STATUS_CFG[status]
+
                           return (
                             <td key={t.id} className="px-1 py-1.5 text-center">
                               <button onClick={() => cycleStatus(client.id, t.id)} disabled={!!isSaving}
