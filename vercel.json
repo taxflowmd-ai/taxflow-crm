@@ -3,8 +3,6 @@
   "buildCommand": "next build",
   "devCommand": "next dev",
   "installCommand": "npm install"
-}
-{
   "crons": [
     {
       "path": "/api/cron/report-tasks",
