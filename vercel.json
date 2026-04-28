@@ -4,7 +4,6 @@
   "devCommand": "next dev",
   "installCommand": "npm install"
 }
-
 {
   "crons": [
     {
