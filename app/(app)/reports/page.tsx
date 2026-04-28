@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { ChevronLeft, ChevronRight, Settings2, X, Plus, Pencil, Trash2, GripVertical, Users, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Settings2, X, Plus, Pencil, Trash2, GripVertical, Users, RefreshCw, Download } from 'lucide-react'
 
 const MONTHS_FULL = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie']
 
@@ -50,10 +50,177 @@ function ObligationsModal({ client, reportTypes, current, onSave, onClose }: any
 function ConfigModal({ reportTypes, onClose, onRefresh }: any) {
   const [types, setTypes] = useState<any[]>(reportTypes)
   const [editId, setEditId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ code: '', label: '' })
-  const [newForm, setNewForm] = useState({ code: '', label: '' })
+  const [editForm, setEditForm] = useState({ code: '', label: '', deadline_day: '', frequency: 'monthly' })
+  const [newForm, setNewForm] = useState({ code: '', label: '', deadline_day: '', frequency: 'monthly' })
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  const FREQ_OPTIONS = [
+    { value: 'monthly', label: 'Lunar' },
+    { value: 'quarterly', label: 'Trimestrial' },
+    { value: 'semi', label: 'Semestrial' },
+    { value: 'annual', label: 'Anual' },
+  ]
+
+  async function handleAdd() {
+    if (!newForm.code || !newForm.label) { toast.error('Completează codul și denumirea'); return }
+    setSaving(true)
+    const res = await fetch('/api/report-types', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...newForm,
+        deadline_day: newForm.deadline_day ? Number(newForm.deadline_day) : null,
+        sort_order: types.length + 1
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) { toast.error(json.error); setSaving(false); return }
+    setTypes(t => [...t, json.data])
+    setNewForm({ code: '', label: '', deadline_day: '', frequency: 'monthly' })
+    setAdding(false)
+    setSaving(false)
+    toast.success('Tip adăugat')
+    onRefresh()
+  }
+
+  async function handleEdit(id: string) {
+    setSaving(true)
+    const res = await fetch('/api/report-types', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id,
+        ...editForm,
+        deadline_day: editForm.deadline_day ? Number(editForm.deadline_day) : null,
+      }),
+    })
+    const json = await res.json()
+    if (!res.ok) { toast.error(json.error); setSaving(false); return }
+    setTypes(t => t.map(x => x.id === id ? json.data : x))
+    setEditId(null)
+    setSaving(false)
+    toast.success('Salvat')
+    onRefresh()
+  }
+
+  async function handleDelete(id: string, code: string) {
+    if (!confirm(`Ștergi tipul "${code}"? Toate rapoartele asociate vor fi pierdute.`)) return
+    const res = await fetch('/api/report-types', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    if (res.ok) { setTypes(t => t.filter(x => x.id !== id)); toast.success('Tip șters'); onRefresh() }
+    else toast.error('Eroare la ștergere')
+  }
+
+  const freqLabel: Record<string,string> = { monthly: 'Lunar', quarterly: 'Trimestrial', semi: 'Semestrial', annual: 'Anual' }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold text-gray-900">Configurare tipuri rapoarte</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Cod, denumire, termen și frecvență per tip</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18}/></button>
+        </div>
+        <div className="p-4 space-y-2 max-h-[500px] overflow-y-auto">
+          {types.map(t => (
+            <div key={t.id} className="border border-gray-200 rounded-xl hover:border-gray-300 transition-colors overflow-hidden">
+              {editId === t.id ? (
+                <div className="p-3 space-y-2">
+                  <div className="flex gap-2">
+                    <input value={editForm.code} onChange={e => setEditForm(f => ({...f, code: e.target.value}))}
+                      className="input w-20 text-xs py-1 font-mono uppercase" placeholder="COD" maxLength={10}/>
+                    <input value={editForm.label} onChange={e => setEditForm(f => ({...f, label: e.target.value}))}
+                      className="input flex-1 text-xs py-1" placeholder="Denumire completă"/>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-[10px] text-gray-500 whitespace-nowrap">Termen (zi)</label>
+                      <input value={editForm.deadline_day} onChange={e => setEditForm(f => ({...f, deadline_day: e.target.value}))}
+                        type="number" min="1" max="31" className="input w-16 text-xs py-1" placeholder="25"/>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-1">
+                      <label className="text-[10px] text-gray-500 whitespace-nowrap">Frecvență</label>
+                      <select value={editForm.frequency} onChange={e => setEditForm(f => ({...f, frequency: e.target.value}))}
+                        className="input flex-1 text-xs py-1">
+                        {FREQ_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setEditId(null)} className="text-xs border border-gray-200 px-2.5 py-1 rounded-lg">Anulează</button>
+                    <button onClick={() => handleEdit(t.id)} disabled={saving}
+                      className="text-xs bg-[#004437] text-white px-2.5 py-1 rounded-lg hover:bg-[#005a47]">
+                      {saving ? '...' : 'Salvează'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 p-2.5">
+                  <GripVertical size={14} className="text-gray-300 flex-shrink-0"/>
+                  <span className="text-sm font-bold text-gray-700 w-14 flex-shrink-0 font-mono">{t.code}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm text-gray-600 truncate">{t.label}</div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {t.frequency && <span className="text-[10px] text-gray-400">{freqLabel[t.frequency] || t.frequency}</span>}
+                      {t.deadline_day && <span className="text-[10px] text-gray-400">· zi {t.deadline_day}</span>}
+                    </div>
+                  </div>
+                  <button onClick={() => { setEditId(t.id); setEditForm({ code: t.code, label: t.label, deadline_day: t.deadline_day || '', frequency: t.frequency || 'monthly' }) }}
+                    className="text-gray-300 hover:text-[#004437] transition-colors flex-shrink-0"><Pencil size={13}/></button>
+                  <button onClick={() => handleDelete(t.id, t.code)}
+                    className="text-gray-300 hover:text-red-500 transition-colors flex-shrink-0"><Trash2 size={13}/></button>
+                </div>
+              )}
+            </div>
+          ))}
+          {adding ? (
+            <div className="border-2 border-dashed border-[#004437] rounded-xl p-3 space-y-2">
+              <div className="flex gap-2">
+                <input value={newForm.code} onChange={e => setNewForm(f => ({...f, code: e.target.value}))}
+                  className="input w-20 text-xs py-1 font-mono uppercase" placeholder="COD" maxLength={10} autoFocus/>
+                <input value={newForm.label} onChange={e => setNewForm(f => ({...f, label: e.target.value}))}
+                  className="input flex-1 text-xs py-1" placeholder="Denumire completă"
+                  onKeyDown={e => e.key === 'Enter' && handleAdd()}/>
+              </div>
+              <div className="flex gap-2">
+                <div className="flex items-center gap-1.5">
+                  <label className="text-[10px] text-gray-500 whitespace-nowrap">Termen (zi)</label>
+                  <input value={newForm.deadline_day} onChange={e => setNewForm(f => ({...f, deadline_day: e.target.value}))}
+                    type="number" min="1" max="31" className="input w-16 text-xs py-1" placeholder="25"/>
+                </div>
+                <div className="flex items-center gap-1.5 flex-1">
+                  <label className="text-[10px] text-gray-500 whitespace-nowrap">Frecvență</label>
+                  <select value={newForm.frequency} onChange={e => setNewForm(f => ({...f, frequency: e.target.value}))}
+                    className="input flex-1 text-xs py-1">
+                    {FREQ_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setAdding(false)} className="text-xs border border-gray-200 px-2.5 py-1 rounded-lg">Anulează</button>
+                <button onClick={handleAdd} disabled={saving}
+                  className="text-xs bg-[#004437] text-white px-2.5 py-1 rounded-lg flex-shrink-0">
+                  {saving ? '...' : 'Adaugă'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setAdding(true)}
+              className="w-full flex items-center gap-2 p-2.5 border-2 border-dashed border-gray-200 rounded-xl text-gray-400 hover:border-[#004437] hover:text-[#004437] transition-colors text-sm">
+              <Plus size={14}/> Adaugă tip nou
+            </button>
+          )}
+        </div>
+        <div className="px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="btn-primary w-full">Închide</button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
   async function handleAdd() {
     if (!newForm.code || !newForm.label) { toast.error('Completează codul și denumirea'); return }
@@ -262,6 +429,48 @@ export default function ReportsPage() {
   function prevMonth() { if (month === 1) { setMonth(12); setYear(y => y-1) } else setMonth(m => m-1) }
   function nextMonth() { if (month === 12) { setMonth(1); setYear(y => y+1) } else setMonth(m => m+1) }
 
+  // Calculează zilele rămase până la termen
+  function getDaysUntilDeadline(deadlineDay: number): number {
+    const today = new Date()
+    const deadline = new Date(year, month - 1, deadlineDay)
+    // Dacă luna curentă e trecută, calculează pentru luna viitoare
+    if (deadline < today && today.getMonth() === deadline.getMonth() && today.getFullYear() === deadline.getFullYear()) {
+      return -1 * Math.floor((today.getTime() - deadline.getTime()) / 86400000)
+    }
+    return Math.ceil((deadline.getTime() - today.getTime()) / 86400000)
+  }
+
+  async function exportExcel() {
+    try {
+      // Generează CSV simplu (compatibil Excel)
+      const MONTHS_FULL_EXP = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie','Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie']
+      const STATUS_MAP: Record<string, string> = { pending: 'Neefectuat', in_progress: 'În lucru', done: 'Prezentat', na: 'N/A' }
+
+      const header = ['Client', 'Companie', ...reportTypes.map(t => t.code)].join(',')
+      const rows = clients.map(c => {
+        const oblIds = obligations[c.id] || []
+        const cells = reportTypes.map(t => {
+          if (!oblIds.includes(t.id)) return '—'
+          const status = reports[`${c.id}_${t.id}`] || 'pending'
+          return STATUS_MAP[status] || status
+        })
+        return [`"${c.name}"`, `"${c.company || ''}"`, ...cells].join(',')
+      })
+
+      const csv = [header, ...rows].join('\n')
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `Rapoarte_${MONTHS_FULL_EXP[month-1]}_${year}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Export generat')
+    } catch {
+      toast.error('Eroare la export')
+    }
+  }
+
   const totalDone = Object.values(reports).filter(s => s === 'done').length
   const totalPending = clients.reduce((acc, c) => {
     const obls = obligations[c.id] || []
@@ -304,6 +513,10 @@ export default function ReportsPage() {
           <button onClick={() => setShowConfig(true)}
             className="flex items-center gap-1.5 text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
             <Settings2 size={13}/> Configurare
+          </button>
+          <button onClick={exportExcel} title="Export Excel"
+            className="flex items-center gap-1.5 text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-600 hover:text-[#004437] transition-colors">
+            <Download size={13}/> Export
           </button>
           <button onClick={() => load()} title="Reîncarcă clienți"
             className="w-8 h-8 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 text-gray-400 hover:text-[#004437] transition-colors">
@@ -349,7 +562,14 @@ export default function ReportsPage() {
                     {/* Coloane rapoarte */}
                     {reportTypes.map((t, i) => (
                       <th key={t.id} className={`px-2 py-3 font-semibold text-center min-w-[42px] text-xs ${i === reportTypes.length-1 ? 'rounded-tr-xl' : ''}`}>
-                        {t.code}
+                        <div>{t.code}</div>
+                        {t.deadline_day && (() => {
+                          const days = getDaysUntilDeadline(t.deadline_day)
+                          if (days <= 0) return <div className="text-[9px] text-red-300 font-normal mt-0.5">exp.</div>
+                          if (days <= 3) return <div className="text-[9px] text-red-300 font-normal mt-0.5">{days}z</div>
+                          if (days <= 7) return <div className="text-[9px] text-amber-300 font-normal mt-0.5">{days}z</div>
+                          return <div className="text-[9px] text-white/40 font-normal mt-0.5">zi {t.deadline_day}</div>
+                        })()}
                       </th>
                     ))}
                     <th className="px-2 py-3 min-w-[30px]"></th>
