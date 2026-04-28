@@ -452,8 +452,8 @@ export default function ReportsPage() {
 
                     {/* Coloane rapoarte */}
                     {reportTypes.map((t, i) => (
-                      <th key={t.id} className={`px-2 py-3 font-semibold text-center min-w-[42px] text-xs ${i === reportTypes.length-1 ? 'rounded-tr-xl' : ''}`}>
-                        <div>{t.code}</div>
+                      <th key={t.id} className={`px-1 py-3 font-semibold text-center w-[52px] max-w-[52px] text-xs ${i === reportTypes.length-1 ? 'rounded-tr-xl' : ''}`}>
+                        <div className="truncate w-full text-center" title={t.code}>{t.code}</div>
                         {t.deadline_day && (() => {
                           const days = getDaysUntilDeadline(t.deadline_day)
                           if (days <= 0) return <div className="text-[9px] text-red-300 font-normal mt-0.5">exp.</div>
