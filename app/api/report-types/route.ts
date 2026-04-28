@@ -21,7 +21,7 @@ function getSupabase() {
 export async function POST(req: NextRequest) {
   const { data: { user } } = await getSupabase().auth.getUser()
   if (!user) return NextResponse.json({ error: 'Neautentificat' }, { status: 401 })
-  const { code, label, sort_order, deadline_day, frequency } = await req.json()
+  const { code, label, sort_order, deadline_day, frequency, deadline_month } = await req.json()
   if (!code || !label) return NextResponse.json({ error: 'Cod și denumire obligatorii' }, { status: 400 })
   const { data, error } = await admin().from('report_types').insert({
     code: code.toUpperCase().trim(),
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
     sort_order: sort_order || 99,
     deadline_day: deadline_day || null,
     frequency: frequency || 'monthly',
+    deadline_month: deadline_month || null,
   }).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data })
@@ -45,6 +46,7 @@ export async function PATCH(req: NextRequest) {
     sort_order,
     deadline_day: deadline_day || null,
     frequency: frequency || null,
+    deadline_month: deadline_month || null,
   }).eq('id', id).select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data })
