@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { Plus, CheckSquare, Square, Trash2, RefreshCw, Pencil } from 'lucide-react'
@@ -40,16 +39,9 @@ function toInputDate(iso: string|null) {
 }
 
 export default function TasksPage() {
-  const searchParams = useSearchParams()
   const [tasks, setTasks] = useState<any[]>([])
   const [leads, setLeads] = useState<any[]>([])
-  const [filter, setFilter] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const p = new URLSearchParams(window.location.search).get('filter')
-      if (p && ['all','today','overdue','pending','recurring','done'].includes(p)) return p
-    }
-    return 'all'
-  })
+  const [filter, setFilter] = useState('all')
   const [showModal, setShowModal] = useState(false)
   const [editingTask, setEditingTask] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
@@ -78,14 +70,6 @@ export default function TasksPage() {
   }
 
   useEffect(()=>{ load() },[])
-
-  // Sincronizează filtrul cu query param din URL
-  useEffect(() => {
-    const p = searchParams.get('filter')
-    if (p && ['all','today','overdue','pending','recurring','done'].includes(p)) {
-      setFilter(p)
-    }
-  }, [searchParams])
 
   const now = new Date()
   const todayStart = new Date(); todayStart.setHours(0,0,0,0)
@@ -199,7 +183,10 @@ export default function TasksPage() {
     className:'input'
   })
 
-  const recurringCount = tasks.filter((t:any)=>t.is_recurring && !t.is_done).length
+  const [showDone, setShowDone] = useState(false)
+
+  const activeTasks = filter === 'all' ? filtered.filter((t:any) => !t.is_done) : filtered
+  const doneTasks = filter === 'all' ? filtered.filter((t:any) => t.is_done) : []
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -231,21 +218,17 @@ export default function TasksPage() {
       <div className="flex-1 overflow-auto p-6">
         {loading ? <div className="text-center py-16 text-gray-400 text-sm">Se încarcă...</div> : (
           <div className="space-y-2 max-w-3xl">
-            {filtered.map((t:any)=>{
+            {activeTasks.map((t:any)=>{
               const isOverdue = !t.is_done && t.due_at && new Date(t.due_at)<now
               const isToday = t.due_at && new Date(t.due_at)>=todayStart && new Date(t.due_at)<=todayEnd
               const pr = PR_CFG[t.priority]||PR_CFG.medium
               return (
-                <div key={t.id} className={`bg-white border rounded-xl p-4 flex items-start gap-3 shadow-sm hover:shadow-md transition-all group ${t.is_done?'opacity-50':'border-gray-200'} ${t.is_recurring&&!t.is_done?'border-l-4 border-l-[#004437]':''}`}>
-                  
-                  {/* Checkbox */}
+                <div key={t.id} className={`bg-white border rounded-xl p-4 flex items-start gap-3 shadow-sm hover:shadow-md transition-all group border-gray-200 ${t.is_recurring&&!t.is_done?'border-l-4 border-l-[#004437]':''}`}>
                   <button onClick={()=>toggleTask(t.id,t.is_done,t)} className="mt-0.5 flex-shrink-0 text-gray-400 hover:text-[#004437] transition-colors">
                     {t.is_done?<CheckSquare size={18} className="text-[#00c48c]"/>:<Square size={18}/>}
                   </button>
-
-                  {/* Conținut */}
                   <div className="flex-1 min-w-0">
-                    <div className={`text-sm font-medium text-gray-900 flex items-center gap-2 ${t.is_done?'line-through text-gray-400':''}`}>
+                    <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                       {t.title}
                       {t.is_recurring && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-[#e8f0ee] text-[#004437] px-2 py-0.5 rounded-full flex-shrink-0">
@@ -262,19 +245,13 @@ export default function TasksPage() {
                       {t.recurrence_end_at&&<span className="text-[10px] text-gray-400">până {new Date(t.recurrence_end_at).toLocaleDateString('ro-RO',{day:'2-digit',month:'short',year:'numeric'})}</span>}
                     </div>
                   </div>
-
-                  {/* Acțiuni */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {t.assignee&&(
                       <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{background:t.assignee.avatar_color}} title={t.assignee.full_name}>
                         {t.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}
                       </div>
                     )}
-                    {/* Buton editare — apare la hover */}
-                    <button
-                      onClick={()=>openEdit(t)}
-                      className="text-gray-300 hover:text-[#004437] transition-colors opacity-0 group-hover:opacity-100"
-                      title="Editează sarcina">
+                    <button onClick={()=>openEdit(t)} className="text-gray-300 hover:text-[#004437] transition-colors opacity-0 group-hover:opacity-100" title="Editează">
                       <Pencil size={14}/>
                     </button>
                     <button onClick={()=>deleteTask(t.id)} className="text-gray-300 hover:text-red-500 transition-colors">
@@ -284,10 +261,65 @@ export default function TasksPage() {
                 </div>
               )
             })}
-            {filtered.length===0&&(
+
+            {activeTasks.length === 0 && doneTasks.length === 0 && (
               <div className="text-center py-16 text-gray-400">
                 <div className="text-3xl mb-2">✅</div>
                 <p className="text-sm">Nicio sarcină</p>
+              </div>
+            )}
+
+            {/* Grup colapsabil — Finalizate */}
+            {doneTasks.length > 0 && (
+              <div className="pt-2">
+                <button
+                  onClick={() => setShowDone(v => !v)}
+                  className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors mb-2 w-full group/done">
+                  <div className="flex-1 h-px bg-gray-100 group-hover/done:bg-gray-200 transition-colors" />
+                  <span className="flex items-center gap-1.5 px-2 font-medium whitespace-nowrap">
+                    <CheckSquare size={12} className="text-[#00c48c]" />
+                    {doneTasks.length} finalizate
+                    <span className={`transition-transform duration-200 ${showDone ? 'rotate-180' : ''}`}>▾</span>
+                  </span>
+                  <div className="flex-1 h-px bg-gray-100 group-hover/done:bg-gray-200 transition-colors" />
+                </button>
+
+                {showDone && (
+                  <div className="space-y-2">
+                    {doneTasks.map((t:any) => {
+                      const pr = PR_CFG[t.priority]||PR_CFG.medium
+                      return (
+                        <div key={t.id} className="bg-white border border-gray-100 rounded-xl p-4 flex items-start gap-3 opacity-50 hover:opacity-70 transition-all group">
+                          <button onClick={()=>toggleTask(t.id,t.is_done,t)} className="mt-0.5 flex-shrink-0 text-[#00c48c]">
+                            <CheckSquare size={18}/>
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-gray-400 line-through">{t.title}</div>
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {t.lead&&<span className="text-xs text-gray-400">👤 {t.lead.name}</span>}
+                              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${pr.cls} opacity-60`}>{pr.label}</span>
+                              {t.done_at && (
+                                <span className="text-xs text-gray-300">
+                                  ✓ {new Date(t.done_at).toLocaleDateString('ro-RO',{day:'2-digit',month:'short'})}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {t.assignee&&(
+                              <div className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white opacity-60" style={{background:t.assignee.avatar_color}}>
+                                {t.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}
+                              </div>
+                            )}
+                            <button onClick={()=>deleteTask(t.id)} className="text-gray-200 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                              <Trash2 size={14}/>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             )}
           </div>
