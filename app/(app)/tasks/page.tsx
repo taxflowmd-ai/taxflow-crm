@@ -185,6 +185,8 @@ export default function TasksPage() {
 
   const [showDone, setShowDone] = useState(false)
 
+  const recurringCount = tasks.filter((t:any)=>t.is_recurring && !t.is_done).length
+
   const activeTasks = filter === 'all' ? filtered.filter((t:any) => !t.is_done) : filtered
   const doneTasks = filter === 'all' ? filtered.filter((t:any) => t.is_done) : []
 
