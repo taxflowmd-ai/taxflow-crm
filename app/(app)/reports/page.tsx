@@ -284,7 +284,7 @@ export default function ReportsPage() {
     const activeFilter = filterUserId === 'all' ? null : filterUserId === 'mine' ? user.id : filterUserId
     
     // Leads prin API route (ocolește RLS)
-    const leadsRes = await fetch('/api/reports/clients')
+    const leadsRes = await fetch('/api/reports/clients', { cache: 'no-store' })
     const leadsJson = await leadsRes.json()
     const allLeads = leadsJson.data || []
     const filteredLeads = activeFilter
