@@ -4,11 +4,11 @@ const nextConfig = {
     serverActions: {
       allowedOrigins: ['localhost:3000'],
     },
-  },
-   outputFileTracingIncludes: {
+    outputFileTracingIncludes: {
      '/api/offers/generate-pdf': ['./public/fonts/**'],
      '/api/offers/send-email': ['./public/fonts/**'],
   },
+ },
 }
 
 module.exports = nextConfig
