@@ -33,7 +33,7 @@ export default async function DashboardPage() {
     supabase.from('leads').select('id').neq('status', 'Pierdut').neq('status', 'Client activ'),
     supabase.from('events').select('id, title, type, starts_at').gte('starts_at', startOfDay.toISOString()).lte('starts_at', endOfDay.toISOString()).order('starts_at'),
     supabase.from('tasks').select('id, title, priority, due_at').eq('is_done', false).order('due_at'),
-    supabase.from('leads').select('id').eq('status', 'Ofertă trimisă'),
+    supabase.from('offers').select('id').eq('status', 'sent'),
     supabase.from('leads').select('id, name, company, status, source, created_at, assignee:assigned_to(full_name, avatar_color)').order('created_at', { ascending: false }).limit(5),
   ])
 
@@ -106,8 +106,8 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          {/* Oferte trimise → Pipeline filtrat */}
-          <Link href="/pipeline?status=Ofertă+trimisă" className="block group">
+          {/* Oferte trimise → Pagina Oferte */}
+          <Link href="/offers" className="block group">
             <StatCard
               icon={<TrendingUp size={18} />}
               label="Oferte trimise"

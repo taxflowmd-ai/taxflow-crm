@@ -8,7 +8,7 @@ import type { Profile } from '@/lib/supabase/types'
 import {
   LayoutDashboard, Target, Users, CheckSquare,
   Calendar, MessageCircle, Upload, Settings,
-  LogOut, Bell, ShieldCheck, ClipboardList
+  LogOut, Bell, ShieldCheck, ClipboardList, FileSignature
 } from 'lucide-react'
 import { toast } from 'sonner'
 import clsx from 'clsx'
@@ -27,6 +27,7 @@ const userNav = [
   { label: 'WhatsApp',    href: '/whatsapp',   icon: MessageCircle },
   { label: 'Import',      href: '/import',     icon: Upload },
   { label: 'Rapoarte',    href: '/reports',    icon: ClipboardList },
+  { label: 'Oferte',      href: '/offers',     icon: FileSignature },
 ]
 
 // Nav items EXTRA pentru ADMIN
