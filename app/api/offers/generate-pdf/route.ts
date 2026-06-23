@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     const buffer = await generateOfferPdfBuffer(data)
 
-    return new NextResponse(buffer, {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': `inline; filename="Oferta_TaxFlow_${(data.sector || 'client').replace(/\s+/g, '_')}.pdf"`,
