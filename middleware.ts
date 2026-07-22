@@ -42,15 +42,21 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && !isPublic) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('role, is_active')
-      .eq('id', user.id)
-      .single()
+    // role + is_active vin din app_metadata (sincronizate prin trigger
+    // pe profiles — migrarea 004), fără query suplimentar la DB.
+    let profile = user.app_metadata as { role?: string; is_active?: boolean }
 
-    const profile = data as { role: string; is_active: boolean } | null
+    if (profile?.role === undefined || profile?.is_active === undefined) {
+      // Fallback pentru conturi create înainte de sincronizare
+      const { data } = await supabase
+        .from('profiles')
+        .select('role, is_active')
+        .eq('id', user.id)
+        .single()
+      profile = (data as { role: string; is_active: boolean } | null) ?? {}
+    }
 
-    if (profile && !profile.is_active) {
+    if (profile && profile.is_active === false) {
       await supabase.auth.signOut()
       const url = request.nextUrl.clone()
       url.pathname = '/auth/login'
