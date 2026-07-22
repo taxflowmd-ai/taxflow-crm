@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { Send, Search, MessageCircle, ExternalLink, RefreshCw, Archive, Trash2, MoreVertical, Zap, UserCircle, Plus, ChevronDown, X, Paperclip } from 'lucide-react'
+import { Send, Search, MessageCircle, ExternalLink, RefreshCw, Archive, Trash2, MoreVertical, Zap, UserCircle, Plus, ChevronDown, ChevronLeft, X, Paperclip } from 'lucide-react'
 
 type Conversation = {
   id: string
@@ -413,7 +413,7 @@ export default function WhatsAppPage() {
     <div className="flex-1 flex overflow-hidden">
 
       {/* ── Sidebar conversații ── */}
-      <div className="w-80 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
+      <div className={`w-full lg:w-80 flex-shrink-0 bg-white border-r border-gray-200 flex-col ${selected ? "hidden lg:flex" : "flex"}`}>
         <div className="px-4 py-3 border-b border-gray-200">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
@@ -501,10 +501,17 @@ export default function WhatsAppPage() {
 
       {/* ── Zona de chat ── */}
       {selected ? (
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Header chat */}
-          <div className="bg-white border-b border-gray-200 px-4 h-14 flex items-center justify-between flex-shrink-0">
-            <div className="flex items-center gap-3">
+          <div className="bg-white border-b border-gray-200 px-2 sm:px-4 h-14 flex items-center justify-between flex-shrink-0">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              {/* Înapoi la lista de conversații — doar pe mobil */}
+              <button
+                onClick={() => setSelected(null)}
+                className="lg:hidden p-1.5 -ml-1 text-gray-500 hover:text-[#004437] flex-shrink-0"
+                aria-label="Înapoi la conversații">
+                <ChevronLeft size={20} />
+              </button>
               {/* Avatar + nume clickabil → panel contact */}
               <button
                 onClick={() => selected.lead_id && (showContactPanel ? setShowContactPanel(false) : loadContactPanel(selected.lead_id!))}
@@ -807,7 +814,7 @@ export default function WhatsAppPage() {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center bg-[#f0f2f5]">
+        <div className="flex-1 hidden lg:flex items-center justify-center bg-[#f0f2f5]">
           <div className="text-center">
             <div className="w-16 h-16 bg-[#e8f0ee] rounded-full flex items-center justify-center mx-auto mb-4">
               <MessageCircle size={28} className="text-[#004437]" />
@@ -822,7 +829,7 @@ export default function WhatsAppPage() {
       {showContactPanel && contactData && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setShowContactPanel(false)} />
-          <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-2xl z-40 flex flex-col border-l border-gray-200">
+          <div className="fixed right-0 top-0 h-full w-full max-w-[320px] bg-white shadow-2xl z-40 flex flex-col border-l border-gray-200">
             <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
               <h3 className="text-sm font-semibold text-gray-900">Fișa contact</h3>
               <button onClick={() => setShowContactPanel(false)}
@@ -944,7 +951,7 @@ export default function WhatsAppPage() {
                   onKeyDown={e => e.key === 'Enter' && handleAddTask()}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">Deadline</label>
                   <input

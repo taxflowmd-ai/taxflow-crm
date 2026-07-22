@@ -80,20 +80,20 @@ export default function EventsPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center justify-between flex-shrink-0">
         <div><h1 className="text-base font-semibold">Evenimente</h1><p className="text-xs text-gray-400">{upcoming.length} viitoare</p></div>
         <div className="flex items-center gap-2">
           <button onClick={getCalendarUrl}
             className="flex items-center gap-1.5 text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
-            <Smartphone size={13}/>Sincronizează iOS
+            <Smartphone size={13}/><span className="hidden sm:inline">Sincronizează iOS</span>
           </button>
-          <button onClick={()=>setShowModal(true)} className="btn-primary"><Plus size={15}/>Eveniment nou</button>
+          <button onClick={()=>setShowModal(true)} className="btn-primary"><Plus size={15}/><span className="hidden sm:inline">Eveniment nou</span></button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
-        <div className="grid grid-cols-[1fr_280px] gap-6 items-start">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 sm:gap-6 items-start">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden order-2 lg:order-1">
             <div className="px-4 py-3 border-b border-gray-100 text-sm font-semibold text-gray-900">Upcoming</div>
             {upcoming.map((e:any)=>{
               const cfg=TYPE_CFG[e.type]||TYPE_CFG.meeting
@@ -115,7 +115,7 @@ export default function EventsPage() {
             {upcoming.length===0&&<div className="text-center py-12 text-gray-400 text-sm">Niciun eveniment viitor</div>}
           </div>
 
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 order-1 lg:order-2">
             <div className="flex items-center justify-between mb-3">
               <button onClick={()=>setCal(c=>{let m=c.m-1,y=c.y;if(m<0){m=11;y--}return{y,m}})} className="w-7 h-7 border border-gray-200 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-50">‹</button>
               <span className="text-sm font-semibold">{MONTHS[cal.m]} {cal.y}</span>
@@ -200,7 +200,7 @@ export default function EventsPage() {
             </div>
             <form onSubmit={handleAdd} className="px-6 py-4 space-y-3">
               <div><label className="label">Titlu *</label><input {...inp('title')} required placeholder="Întâlnire..."/></div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="label">Tip</label>
                   <select {...inp('type')} className="input">
                     <option value="meeting">🤝 Întâlnire</option>

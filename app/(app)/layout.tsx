@@ -27,7 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!profile?.is_active) redirect('/auth/login?error=account_disabled')
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex flex-col lg:flex-row h-screen h-[100dvh] overflow-hidden bg-gray-50">
       <Sidebar profile={profile!} />
       <main className="flex-1 flex flex-col overflow-hidden">
         {children}

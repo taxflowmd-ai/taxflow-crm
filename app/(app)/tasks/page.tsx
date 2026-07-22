@@ -192,7 +192,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-base font-semibold">Sarcini</h1>
           <p className="text-xs text-gray-400">
@@ -200,11 +200,11 @@ export default function TasksPage() {
             {recurringCount > 0 && <span className="ml-2 text-[#004437]">· {recurringCount} recurente</span>}
           </p>
         </div>
-        <button onClick={openAdd} className="btn-primary"><Plus size={15}/>Sarcină nouă</button>
+        <button onClick={openAdd} className="btn-primary"><Plus size={15}/><span className="hidden sm:inline">Sarcină nouă</span></button>
       </div>
 
       {/* Filtre */}
-      <div className="bg-white border-b border-gray-100 px-6 py-2 flex gap-2 flex-shrink-0 overflow-x-auto">
+      <div className="bg-white border-b border-gray-100 px-4 sm:px-6 py-2 flex gap-2 flex-shrink-0 overflow-x-auto">
         {FILTERS.map(f=>(
           <button key={f.id} onClick={()=>setFilter(f.id)}
             className={`px-3 py-1 rounded-full text-xs font-medium border transition-all whitespace-nowrap ${filter===f.id?'bg-[#004437] text-white border-[#004437]':'border-gray-200 text-gray-600 hover:border-gray-300'}`}>
@@ -217,7 +217,7 @@ export default function TasksPage() {
       </div>
 
       {/* Lista sarcini */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
         {loading ? <div className="text-center py-16 text-gray-400 text-sm">Se încarcă...</div> : (
           <div className="space-y-2 max-w-3xl">
             {activeTasks.map((t:any)=>{
@@ -344,7 +344,7 @@ export default function TasksPage() {
                 <input {...inp('title')} required placeholder="Sună clientul, trimite oferta..."/>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="label">Contact</label>
                   <select {...inp('lead_id')} className="input">
@@ -393,7 +393,7 @@ export default function TasksPage() {
                   </span>
                 </label>
                 {form.is_recurring && (
-                  <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div>
                       <label className="label">Recurență</label>
                       <select {...inp('recurrence')} className="input">

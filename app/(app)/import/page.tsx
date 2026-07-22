@@ -99,12 +99,12 @@ export default function ImportPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center justify-between flex-shrink-0">
         <div><h1 className="text-base font-semibold">Import lead-uri</h1><p className="text-xs text-gray-400">Importă din CSV</p></div>
         <button onClick={downloadTemplate} className="btn-outline text-xs"><Download size={14}/>Template CSV</button>
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="max-w-2xl mx-auto">
 
           {/* PASUL 1: Upload */}
@@ -150,7 +150,7 @@ export default function ImportPage() {
                   </button>
                 </div>
               </div>
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>{['Nume','Companie','Telefon','Email','Sursă'].map(h=><th key={h} className="px-3 py-2 text-left font-semibold text-gray-500">{h}</th>)}</tr>
@@ -175,7 +175,7 @@ export default function ImportPage() {
           {/* PASUL 3: Rezultate */}
           {step==='done' && (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                 <div className="bg-[#e8f0ee] rounded-xl p-4 text-center">
                   <div className="text-2xl font-bold text-[#004437]">{results.length}</div>
                   <div className="text-xs text-[#004437]/70 mt-0.5">Total procesate</div>

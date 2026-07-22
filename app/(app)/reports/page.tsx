@@ -438,7 +438,7 @@ export default function ReportsPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-2 min-h-14 flex flex-wrap items-center justify-between gap-2 flex-shrink-0">
         <div>
           <h1 className="text-base font-semibold">Rapoarte & Declarații</h1>
           <p className="text-xs text-gray-400">
@@ -449,7 +449,7 @@ export default function ReportsPage() {
             <span className="text-gray-400">{clients.length} clienți</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <select
               value={filterUserId}
@@ -466,11 +466,11 @@ export default function ReportsPage() {
           </div>
           <button onClick={() => setShowConfig(true)}
             className="flex items-center gap-1.5 text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition-colors text-gray-600">
-            <Settings2 size={13}/> Configurare
+            <Settings2 size={13}/><span className="hidden sm:inline"> Configurare</span>
           </button>
           <button onClick={exportExcel} title="Export Excel"
             className="flex items-center gap-1.5 text-xs border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50 text-gray-600 hover:text-[#004437] transition-colors">
-            <Download size={13}/> Export
+            <Download size={13}/><span className="hidden sm:inline"> Export</span>
           </button>
           <button onClick={() => load()} title="Reîncarcă clienți"
             className="w-8 h-8 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 text-gray-400 hover:text-[#004437] transition-colors">
@@ -479,7 +479,7 @@ export default function ReportsPage() {
           <button onClick={prevMonth} className="w-8 h-8 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors">
             <ChevronLeft size={15}/>
           </button>
-          <span className="text-sm font-semibold min-w-[140px] text-center bg-gray-50 px-3 py-1.5 rounded-lg">
+          <span className="text-sm font-semibold min-w-[110px] sm:min-w-[140px] text-center bg-gray-50 px-3 py-1.5 rounded-lg">
             {MONTHS_FULL[month-1]} {year}
           </span>
           <button onClick={nextMonth} className="w-8 h-8 border border-gray-200 rounded-lg flex items-center justify-center hover:bg-gray-50 transition-colors">
@@ -488,7 +488,7 @@ export default function ReportsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto p-3 sm:p-6">
         {loading ? (
           <div className="text-center py-16 text-gray-400 text-sm">Se încarcă...</div>
         ) : (

@@ -128,7 +128,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center justify-between gap-2 flex-shrink-0">
         <div>
           <h1 className="text-base font-semibold">Pipeline</h1>
           <p className="text-xs text-gray-400">{leads.length} lead-uri</p>
@@ -144,12 +144,12 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
               <List size={13} /> Listă
             </button>
           </div>
-          <button onClick={()=>setShowModal(true)} className="btn-primary"><Plus size={15}/>Lead nou</button>
+          <button onClick={()=>setShowModal(true)} className="btn-primary"><Plus size={15}/><span className="hidden sm:inline">Lead nou</span></button>
         </div>
       </div>
 
       {isAdmin && (
-        <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-2 flex-shrink-0">
+        <div className="bg-white border-b border-gray-100 px-4 sm:px-6 py-2 flex items-center gap-2 flex-shrink-0 overflow-x-auto">
           <span className="text-xs text-gray-500 font-medium">Responsabil:</span>
           {[{id:'all',full_name:'Toți',avatar_color:'#004437'}, ...team].map((m:any)=>(
             <button key={m.id} onClick={()=>setFilter(m.id)}
@@ -161,7 +161,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
       )}
 
       {view === 'kanban' && (
-        <div className="flex-1 overflow-x-auto p-6">
+        <div className="flex-1 overflow-x-auto p-4 sm:p-6">
           <div className="flex gap-4 h-full min-w-max items-start">
             {STATUSES.map(st=>{
               const cols = filtered.filter(l=>l.status===st)
@@ -234,7 +234,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
 
       {view === 'list' && (
         <div className="flex-1 overflow-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[800px]">
             <thead className="bg-gray-50 sticky top-0 z-10">
               <tr>
                 {[
@@ -366,7 +366,7 @@ export default function PipelineClient({ leads, team, isAdmin, currentUserId }:P
               <button onClick={()=>setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
             <form onSubmit={handleAddLead} className="px-6 py-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="label">Nume *</label><input {...inp('name')} placeholder="Ion Popescu" required/></div>
                 <div><label className="label">Companie</label><input {...inp('company')} placeholder="SRL..."/></div>
                 <div><label className="label">Telefon</label><input {...inp('phone')} placeholder="+373..."/></div>

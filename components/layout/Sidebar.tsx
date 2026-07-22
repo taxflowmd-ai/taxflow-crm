@@ -2,13 +2,14 @@
 // components/layout/Sidebar.tsx
 
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile } from '@/lib/supabase/types'
 import {
   LayoutDashboard, Target, Users, CheckSquare,
   Calendar, MessageCircle, Upload, Settings,
-  LogOut, Bell, ShieldCheck, ClipboardList, FileSignature
+  LogOut, Bell, ShieldCheck, ClipboardList, FileSignature, Menu, X
 } from 'lucide-react'
 import { toast } from 'sonner'
 import clsx from 'clsx'
@@ -39,6 +40,10 @@ export default function Sidebar({ profile }: Props) {
   const pathname = usePathname()
   const router = useRouter()
   const isAdmin = profile.role === 'admin'
+  const [open, setOpen] = useState(false)
+
+  // Închide drawer-ul la navigare (mobil)
+  useEffect(() => { setOpen(false) }, [pathname])
 
   const initials = profile.full_name
     .split(' ')
@@ -58,13 +63,51 @@ export default function Sidebar({ profile }: Props) {
   const allNav = isAdmin ? [...userNav, ...adminNav] : userNav
 
   return (
-    <aside className="w-[220px] min-w-[220px] bg-[#002e25] flex flex-col h-full">
-      {/* Logo */}
-      <div className="px-5 py-5 border-b border-white/[0.08]">
-        <div className="font-serif text-xl text-white tracking-tight">TaxFlow</div>
-        <div className="text-[10px] text-white/40 uppercase tracking-[1.5px] mt-0.5">
-          CRM · Partner financiar
+    <>
+      {/* Bară superioară — doar pe mobil */}
+      <div className="lg:hidden bg-[#002e25] h-14 px-4 flex items-center justify-between flex-shrink-0">
+        <button
+          onClick={() => setOpen(true)}
+          className="text-white/80 hover:text-white p-2 -ml-2"
+          aria-label="Deschide meniul">
+          <Menu size={22} />
+        </button>
+        <div className="font-serif text-lg text-white tracking-tight">TaxFlow</div>
+        <div
+          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white"
+          style={{ background: profile.avatar_color }}>
+          {initials}
         </div>
+      </div>
+
+      {/* Overlay — doar pe mobil, când drawer-ul e deschis */}
+      {open && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={() => setOpen(false)}
+        />
+      )}
+
+      <aside className={clsx(
+        'w-[220px] min-w-[220px] bg-[#002e25] flex flex-col',
+        'fixed inset-y-0 left-0 z-50 transform transition-transform duration-200 ease-out',
+        open ? 'translate-x-0' : '-translate-x-full',
+        'lg:static lg:translate-x-0 lg:h-full lg:transform-none lg:transition-none'
+      )}>
+      {/* Logo */}
+      <div className="px-5 py-5 border-b border-white/[0.08] flex items-start justify-between">
+        <div>
+          <div className="font-serif text-xl text-white tracking-tight">TaxFlow</div>
+          <div className="text-[10px] text-white/40 uppercase tracking-[1.5px] mt-0.5">
+            CRM · Partner financiar
+          </div>
+        </div>
+        <button
+          onClick={() => setOpen(false)}
+          className="lg:hidden text-white/50 hover:text-white p-1"
+          aria-label="Închide meniul">
+          <X size={18} />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -130,7 +173,8 @@ export default function Sidebar({ profile }: Props) {
           </button>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   )
 }
 

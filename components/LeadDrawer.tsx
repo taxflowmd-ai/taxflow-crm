@@ -592,9 +592,9 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
   return (
     <>
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
-      <div className="fixed right-0 top-0 h-full w-[480px] bg-white shadow-2xl z-50 flex flex-col">
+      <div className="fixed right-0 top-0 h-full w-full max-w-[480px] bg-white shadow-2xl z-50 flex flex-col">
 
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+        <div className="px-4 sm:px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
           {loading ? <div className="h-5 w-40 bg-gray-200 rounded animate-pulse" /> : (
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
@@ -633,7 +633,7 @@ export default function LeadDrawer({ leadId, onClose, team = [], isAdmin = false
           </div>
         </div>
 
-        <div className="px-6 border-b border-gray-200 flex gap-1 flex-shrink-0 overflow-x-auto">
+        <div className="px-4 sm:px-6 border-b border-gray-200 flex gap-1 flex-shrink-0 overflow-x-auto">
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id as any)}
               className={`px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${tab===t.id?'border-[#004437] text-[#004437]':'border-transparent text-gray-500 hover:text-gray-700'}`}>

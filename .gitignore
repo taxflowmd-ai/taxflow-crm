@@ -1,1 +1,12 @@
 node_modules/
+.next/
+out/
+.env
+.env.local
+.env*.local
+.DS_Store
+**/.DS_Store
+DEPLOYMENT.md
+temp.txt
+*.tsbuildinfo
+.claude/

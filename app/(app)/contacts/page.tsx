@@ -113,14 +113,14 @@ export default function ContactsPage() {
           </div>
         </td>
         <td className="px-4 py-3"><a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} className="text-sm text-[#004437] hover:underline">{l.phone||'—'}</a></td>
-        <td className="px-4 py-3 text-sm text-gray-500">{l.email||'—'}</td>
-        <td className="px-4 py-3"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span></td>
+        <td className="px-4 py-3 text-sm text-gray-500 hidden md:table-cell">{l.email||'—'}</td>
+        <td className="px-4 py-3 hidden md:table-cell"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span></td>
         <td className="px-4 py-3">
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium" style={{background:sc+'22',color:sc}}>
             <span className="w-1.5 h-1.5 rounded-full" style={{background:sc}}/>{l.status}
           </span>
         </td>
-        <td className="px-4 py-3">{l.assignee&&<div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:l.assignee.avatar_color}} title={l.assignee.full_name}>{l.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}</div>}</td>
+        <td className="px-4 py-3 hidden md:table-cell">{l.assignee&&<div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:l.assignee.avatar_color}} title={l.assignee.full_name}>{l.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}</div>}</td>
         <td className="px-4 py-3">
           {l.phone&&(
             <button onClick={(e)=>openWhatsApp(e,l.id,l.phone,l.name)}
@@ -136,24 +136,24 @@ export default function ContactsPage() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center justify-between flex-shrink-0">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-base font-semibold">Contacte</h1>
           <p className="text-xs text-gray-400">{filtered.length} din {leads.length}</p>
         </div>
-        <button onClick={()=>setShowModal(true)} className="btn-primary"><Plus size={15}/>Contact nou</button>
+        <button onClick={()=>setShowModal(true)} className="btn-primary"><Plus size={15}/><span className="hidden sm:inline">Contact nou</span></button>
       </div>
 
-      <div className="bg-white border-b border-gray-100 px-6 py-2 flex items-center gap-3 flex-shrink-0">
-        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 w-64">
+      <div className="bg-white border-b border-gray-100 px-4 sm:px-6 py-2 flex flex-wrap items-center gap-2 sm:gap-3 flex-shrink-0">
+        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 w-full sm:w-64">
           <Search size={14} className="text-gray-400"/>
           <input className="bg-transparent text-sm outline-none flex-1 placeholder:text-gray-400" placeholder="Caută..." value={q} onChange={e=>setQ(e.target.value)}/>
         </div>
-        <select className="input w-48 py-1.5" value={stFilter} onChange={e=>setStFilter(e.target.value)}>
+        <select className="input flex-1 sm:flex-none sm:w-48 py-1.5" value={stFilter} onChange={e=>setStFilter(e.target.value)}>
           <option value="">Toate statusurile</option>
           {ALL_STATUSES.map(s=><option key={s}>{s}</option>)}
         </select>
-        <select className="input w-36 py-1.5" value={srcFilter} onChange={e=>setSrcFilter(e.target.value)}>
+        <select className="input flex-1 sm:flex-none sm:w-36 py-1.5" value={srcFilter} onChange={e=>setSrcFilter(e.target.value)}>
           <option value="">Toate sursele</option>
           {['Meta Ads','WhatsApp','Organic','Referință','Site web','Import'].map(s=><option key={s}>{s}</option>)}
         </select>
@@ -165,8 +165,12 @@ export default function ContactsPage() {
         ) : (
           <table className="w-full">
             <thead className="bg-gray-50 sticky top-0 z-10">
-              <tr>{['Contact','Telefon','Email','Sursă','Status','Responsabil','Acțiuni'].map(h=>(
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200">{h}</th>
+              <tr>{[
+                {h:'Contact',cls:''},{h:'Telefon',cls:''},{h:'Email',cls:'hidden md:table-cell'},
+                {h:'Sursă',cls:'hidden md:table-cell'},{h:'Status',cls:''},
+                {h:'Responsabil',cls:'hidden md:table-cell'},{h:'Acțiuni',cls:''},
+              ].map(({h,cls})=>(
+                <th key={h} className={`px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide border-b border-gray-200 ${cls}`}>{h}</th>
               ))}</tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -209,8 +213,8 @@ export default function ContactsPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3"><a href={`tel:${l.phone}`} onClick={e=>e.stopPropagation()} className="text-sm text-gray-400 hover:underline">{l.phone||'—'}</a></td>
-                      <td className="px-4 py-3 text-sm text-gray-400">{l.email||'—'}</td>
-                      <td className="px-4 py-3"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span></td>
+                      <td className="px-4 py-3 text-sm text-gray-400 hidden md:table-cell">{l.email||'—'}</td>
+                      <td className="px-4 py-3 hidden md:table-cell"><span className={`text-xs font-medium px-2 py-0.5 rounded-full ${SRC_CLS[l.source]||'bg-gray-100 text-gray-600'}`}>{l.source}</span></td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium"
                           style={{background:(ST_COLORS[l.status]||'#94a3b8')+'22', color: ST_COLORS[l.status]||'#94a3b8'}}>
@@ -218,7 +222,7 @@ export default function ContactsPage() {
                           {l.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3">{l.assignee&&<div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:l.assignee.avatar_color}} title={l.assignee.full_name}>{l.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}</div>}</td>
+                      <td className="px-4 py-3 hidden md:table-cell">{l.assignee&&<div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white" style={{background:l.assignee.avatar_color}} title={l.assignee.full_name}>{l.assignee.full_name.split(' ').map((w:string)=>w[0]).join('').substring(0,2)}</div>}</td>
                       <td className="px-4 py-3">
                         {l.phone&&<button onClick={(e)=>openWhatsApp(e,l.id,l.phone,l.name)}
                           className="p-1.5 rounded-lg border border-gray-200 text-green-600 hover:bg-green-50 transition-colors inline-flex">
@@ -251,7 +255,7 @@ export default function ContactsPage() {
               <button onClick={()=>setShowModal(false)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
             <form onSubmit={handleAdd} className="px-6 py-4 space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className="label">Nume *</label><input {...inp('name')} required placeholder="Ion Popescu"/></div>
                 <div><label className="label">Companie</label><input {...inp('company')} placeholder="SRL..."/></div>
                 <div><label className="label">Telefon</label><input {...inp('phone')} placeholder="+373..."/></div>

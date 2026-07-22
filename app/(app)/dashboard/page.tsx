@@ -44,7 +44,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="bg-white border-b border-gray-200 px-6 h-14 flex items-center flex-shrink-0">
+      <div className="bg-white border-b border-gray-200 px-4 sm:px-6 h-14 flex items-center flex-shrink-0">
         <div>
           <h1 className="text-base font-semibold text-gray-900">
             Bună ziua, {profile?.full_name?.split(' ')[0]}!
@@ -56,8 +56,8 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-4 gap-4">
+      <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
 
           {/* Lead-uri active → Pipeline */}
           <Link href="/pipeline" className="block group">
@@ -120,7 +120,7 @@ export default async function DashboardPage() {
 
         </div>
 
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           <div className="card overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-gray-900">Sarcini urgente</h2>

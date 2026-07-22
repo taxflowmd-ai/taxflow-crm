@@ -86,7 +86,7 @@ export default function UsersClient({ currentUserId, users, invitations }: Props
       <div className="p-6 space-y-6">
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
           <StatCard icon={<User size={18} />} label="Total utilizatori" value={users.length} color="blue" />
           <StatCard icon={<CheckCircle size={18} />} label="Conturi active" value={activeUsers.length} color="green" />
           <StatCard icon={<Clock size={18} />} label="Invitații în așteptare" value={invitations.length} color="amber" />
@@ -99,7 +99,7 @@ export default function UsersClient({ currentUserId, users, invitations }: Props
             Utilizatori activi ({activeUsers.length})
           </h2>
           <div className="card overflow-hidden">
-            <table className="w-full">
+            <table className="w-full min-w-[640px]">
               <thead>
                 <tr className="bg-gray-50 border-b border-gray-200">
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Utilizator</th>
@@ -132,7 +132,7 @@ export default function UsersClient({ currentUserId, users, invitations }: Props
               Invitații în așteptare ({invitations.length})
             </h2>
             <div className="card overflow-hidden">
-              <table className="w-full">
+              <table className="w-full min-w-[640px]">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Email</th>
@@ -175,7 +175,7 @@ export default function UsersClient({ currentUserId, users, invitations }: Props
               Conturi dezactivate ({inactiveUsers.length})
             </h2>
             <div className="card overflow-hidden">
-              <table className="w-full">
+              <table className="w-full min-w-[640px]">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
                     <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Utilizator</th>
@@ -224,7 +224,7 @@ export default function UsersClient({ currentUserId, users, invitations }: Props
               </div>
               <div>
                 <label className="label">Rol *</label>
-                <div className="grid grid-cols-2 gap-3 mt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
                   <RoleOption
                     value="user"
                     selected={inviteRole === 'user'}
