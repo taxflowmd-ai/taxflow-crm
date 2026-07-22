@@ -73,5 +73,7 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // sw.js, manifest.json, icons și /offline trebuie accesibile fără auth,
+  // altfel service worker-ul PWA nu se poate înregistra (redirect → login)
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|sw\\.js|manifest\\.json|icons/|offline|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 }
